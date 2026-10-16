@@ -1,0 +1,452 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@layer base {
+  :root {
+    --background: 256 48% 5%;
+    --foreground: 230 40% 96%;
+
+    --card: 256 40% 9%;
+    --card-foreground: 230 40% 96%;
+
+    --popover: 256 40% 9%;
+    --popover-foreground: 230 40% 96%;
+
+    --primary: 44 100% 55%;
+    --primary-foreground: 256 48% 6%;
+
+    --secondary: 268 45% 22%;
+    --secondary-foreground: 230 40% 96%;
+
+    --muted: 256 32% 14%;
+    --muted-foreground: 240 16% 66%;
+
+    --accent: 188 100% 55%;
+    --accent-foreground: 256 48% 6%;
+
+    --destructive: 352 90% 62%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 262 30% 24%;
+    --input: 262 30% 20%;
+    --ring: 44 100% 55%;
+
+    --radius: 0.85rem;
+
+    --sidebar-background: 256 40% 8%;
+    --sidebar-foreground: 230 40% 96%;
+    --sidebar-primary: 44 100% 55%;
+    --sidebar-primary-foreground: 256 48% 6%;
+    --sidebar-accent: 268 45% 22%;
+    --sidebar-accent-foreground: 230 40% 96%;
+    --sidebar-border: 262 30% 24%;
+    --sidebar-ring: 44 100% 55%;
+
+    --space-deep: 256 48% 5%;
+    --space-nebula: 268 60% 28%;
+    --star-gold: 44 100% 55%;
+    --nebula-cyan: 188 100% 55%;
+
+    /* Gaming palette */
+    --neon-magenta: 318 100% 62%;
+    --neon-violet: 266 95% 68%;
+    --xp-green: 146 85% 52%;
+    --gold-deep: 34 100% 42%;
+    --gold-light: 50 100% 75%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  /* Prevent iOS zoom on focus: inputs need >= 16px; use 17px minimum */
+  input,
+  textarea,
+  select,
+  [contenteditable="true"] {
+    font-size: max(17px, 1em) !important;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-xl border border-border/60 rounded-xl;
+    box-shadow: 0 0 0 1px hsl(var(--neon-violet) / 0.06), 0 10px 30px -12px hsl(0 0% 0% / 0.6), inset 0 1px 0 hsl(var(--foreground) / 0.06);
+  }
+
+  .glass-card-glow {
+    @apply glass-card;
+    box-shadow: 0 0 30px hsl(var(--neon-violet) / 0.16), 0 0 60px hsl(var(--nebula-cyan) / 0.06), inset 0 1px 0 hsl(var(--foreground) / 0.08);
+  }
+
+  .neon-border {
+    border: 1px solid hsl(var(--star-gold) / 0.55);
+    box-shadow: 0 0 14px hsl(var(--star-gold) / 0.25), inset 0 0 12px hsl(var(--star-gold) / 0.08);
+  }
+
+  .space-gradient {
+    background:
+      radial-gradient(1200px 600px at 10% -10%, hsl(var(--neon-violet) / 0.22), transparent 60%),
+      radial-gradient(900px 500px at 110% 20%, hsl(var(--neon-magenta) / 0.14), transparent 60%),
+      radial-gradient(900px 600px at 50% 120%, hsl(var(--nebula-cyan) / 0.10), transparent 60%),
+      hsl(var(--space-deep));
+  }
+
+  .portal-ring {
+    @apply rounded-full;
+    box-shadow: 0 0 15px hsl(var(--nebula-cyan) / 0.45), 0 0 30px hsl(var(--nebula-cyan) / 0.2);
+    border: 2px solid hsl(var(--nebula-cyan) / 0.6);
+  }
+
+  .btn-space {
+    @apply relative overflow-hidden font-semibold;
+    background: linear-gradient(180deg, hsl(var(--gold-light)) 0%, hsl(var(--star-gold)) 45%, hsl(var(--gold-deep)) 100%);
+    color: hsl(var(--space-deep));
+    box-shadow: 0 4px 0 hsl(28 90% 28%), 0 8px 20px -6px hsl(var(--star-gold) / 0.6);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  }
+
+  .btn-space:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 0 hsl(28 90% 28%), 0 12px 28px -6px hsl(var(--star-gold) / 0.75);
+  }
+
+  .btn-space:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 hsl(28 90% 28%), 0 4px 12px -6px hsl(var(--star-gold) / 0.6);
+  }
+
+  /* ---------- Gaming HUD ---------- */
+  .font-hud {
+    font-family: 'Chakra Petch', 'Inter', sans-serif;
+  }
+
+  .hud-label {
+    font-family: 'Chakra Petch', 'Inter', sans-serif;
+    @apply uppercase tracking-[0.22em] text-[11px] font-semibold text-muted-foreground;
+  }
+
+  .hud-panel {
+    position: relative;
+    background: linear-gradient(160deg, hsl(var(--card) / 0.92), hsl(256 40% 7% / 0.92));
+    clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+    @apply backdrop-blur-xl;
+  }
+
+  .hud-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    background: linear-gradient(135deg, hsl(var(--neon-violet) / 0.7), hsl(var(--nebula-cyan) / 0.25) 40%, hsl(var(--neon-magenta) / 0.5));
+    clip-path: inherit;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .hud-panel-gold::before {
+    background: linear-gradient(135deg, hsl(var(--gold-light)), hsl(var(--star-gold) / 0.4) 45%, hsl(var(--gold-deep)));
+  }
+
+  .xp-track {
+    @apply relative h-3 w-full overflow-hidden rounded-full;
+    background: hsl(var(--muted));
+    box-shadow: inset 0 1px 3px hsl(0 0% 0% / 0.6);
+  }
+
+  .xp-fill {
+    @apply absolute inset-y-0 left-0 rounded-full;
+    background: linear-gradient(90deg, hsl(var(--nebula-cyan)), hsl(var(--xp-green)));
+    box-shadow: 0 0 12px hsl(var(--xp-green) / 0.7);
+  }
+
+  .xp-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(115deg, transparent 0 8px, hsl(0 0% 100% / 0.18) 8px 12px);
+    animation: xp-stripes 1.2s linear infinite;
+  }
+
+  .text-gold-gradient {
+    background: linear-gradient(180deg, hsl(var(--gold-light)) 0%, hsl(var(--star-gold)) 50%, hsl(var(--gold-deep)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 10px hsl(var(--star-gold) / 0.35));
+  }
+
+  .text-neon {
+    color: hsl(var(--nebula-cyan));
+    text-shadow: 0 0 12px hsl(var(--nebula-cyan) / 0.6);
+  }
+
+  .grid-floor {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 45vh;
+    background-image:
+      linear-gradient(hsl(var(--neon-violet) / 0.25) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--neon-violet) / 0.25) 1px, transparent 1px);
+    background-size: 48px 48px;
+    transform: perspective(500px) rotateX(62deg);
+    transform-origin: bottom;
+    mask-image: linear-gradient(to top, #000 0%, transparent 85%);
+    pointer-events: none;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+    font-family: 'Chakra Petch', 'Inter', sans-serif;
+  }
+
+  .drop-glow {
+    filter: drop-shadow(0 0 18px hsl(var(--star-gold) / 0.9)) drop-shadow(0 0 40px hsl(var(--star-gold) / 0.5));
+  }
+}
+
+/* ---------- Arcade buttons ---------- */
+.btn-game {
+  border: 1px solid hsl(0 0% 100% / 0.18);
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+  text-shadow: 0 1px 0 hsl(0 0% 100% / 0.25);
+}
+.btn-game::before {
+  content: "";
+  position: absolute;
+  inset: 2px 8px auto 8px;
+  height: 30%;
+  max-height: 22px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, hsl(0 0% 100% / 0.22), transparent);
+  pointer-events: none;
+}
+.btn-game:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-game-gold {
+  color: hsl(var(--space-deep));
+  background: linear-gradient(180deg, hsl(var(--gold-light)), hsl(var(--star-gold)) 45%, hsl(var(--gold-deep)));
+  box-shadow: 0 6px 0 hsl(28 90% 26%), 0 10px 30px -6px hsl(var(--star-gold) / 0.7);
+}
+.btn-game-cyan {
+  color: hsl(var(--space-deep));
+  background: linear-gradient(180deg, hsl(188 100% 80%), hsl(var(--nebula-cyan)) 45%, hsl(196 100% 36%));
+  box-shadow: 0 6px 0 hsl(200 100% 20%), 0 10px 30px -6px hsl(var(--nebula-cyan) / 0.7);
+}
+.btn-game-violet {
+  color: white;
+  background: linear-gradient(180deg, hsl(270 100% 80%), hsl(var(--neon-violet)) 45%, hsl(272 70% 38%));
+  box-shadow: 0 6px 0 hsl(272 70% 20%), 0 10px 30px -6px hsl(var(--neon-violet) / 0.7);
+}
+.btn-game-danger {
+  color: white;
+  background: linear-gradient(180deg, hsl(352 100% 78%), hsl(var(--destructive)) 45%, hsl(352 70% 38%));
+  box-shadow: 0 6px 0 hsl(352 70% 22%), 0 10px 30px -6px hsl(var(--destructive) / 0.6);
+}
+.btn-game-ghost {
+  color: hsl(var(--foreground));
+  background: linear-gradient(180deg, hsl(var(--muted)), hsl(256 40% 9%));
+  box-shadow: 0 6px 0 hsl(256 40% 4%), inset 0 0 0 1px hsl(var(--neon-violet) / 0.35);
+}
+
+/* ---------- Cockpit ---------- */
+.cockpit {
+  position: relative;
+  border-radius: 28px;
+  background:
+    radial-gradient(600px 300px at 50% 0%, hsl(var(--neon-violet) / 0.25), transparent 70%),
+    linear-gradient(180deg, hsl(256 45% 10%), hsl(256 50% 5%));
+  box-shadow: inset 0 0 0 1px hsl(var(--neon-violet) / 0.35), inset 0 0 60px hsl(var(--nebula-cyan) / 0.08), 0 30px 60px -30px hsl(0 0% 0% / 0.8);
+}
+.cockpit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(0deg, transparent 0 3px, hsl(0 0% 100% / 0.025) 3px 4px);
+  pointer-events: none;
+}
+.system-card {
+  position: relative;
+  background: linear-gradient(180deg, hsl(256 40% 13%), hsl(256 45% 8%));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 6px 0 hsl(256 45% 4%), inset 0 1px 0 hsl(0 0% 100% / 0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.system-card:hover { border-color: hsl(var(--nebula-cyan) / 0.6); }
+.system-card-next {
+  border-color: hsl(var(--neon-violet));
+  animation: next-glow 1.6s ease-in-out infinite;
+}
+.system-card-done {
+  border-color: hsl(var(--xp-green) / 0.55);
+  background: linear-gradient(180deg, hsl(150 40% 11%), hsl(256 45% 8%));
+}
+@keyframes next-glow {
+  0%, 100% { box-shadow: 0 6px 0 hsl(272 70% 20%), 0 0 0 0 hsl(var(--neon-violet) / 0.5); }
+  50% { box-shadow: 0 6px 0 hsl(272 70% 20%), 0 0 28px 4px hsl(var(--neon-violet) / 0.55); }
+}
+.status-light {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+.status-pending { background: hsl(var(--destructive)); box-shadow: 0 0 10px hsl(var(--destructive)); animation: blink 1s steps(2, start) infinite; }
+.status-partial { background: hsl(var(--star-gold)); box-shadow: 0 0 10px hsl(var(--star-gold)); }
+.status-done { background: hsl(var(--xp-green)); box-shadow: 0 0 12px hsl(var(--xp-green)); }
+
+@keyframes blink { to { visibility: hidden; } }
+
+@keyframes radar-pulse {
+  0% { box-shadow: 0 0 0 0 hsl(var(--nebula-cyan) / 0.7); }
+  100% { box-shadow: 0 0 0 14px hsl(var(--nebula-cyan) / 0); }
+}
+.radar-pulse { animation: radar-pulse 1.4s ease-out infinite; }
+
+@keyframes xp-stripes {
+  from { background-position: 0 0; }
+  to { background-position: 24px 0; }
+}
+
+@keyframes shine-sweep {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  60%, 100% { transform: translateX(220%) skewX(-20deg); }
+}
+
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.35), transparent);
+  animation: shine-sweep 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-twinkle {
+  animation: twinkle var(--duration, 3s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Parallax star drift */
+@keyframes star-drift {
+  0% { transform: translateY(0px); }
+  100% { transform: translateY(-14px); }
+}
+
+.star-drift-1 {
+  animation: twinkle var(--duration, 3s) ease-in-out infinite,
+    star-drift 18s ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s), 0s;
+}
+
+.star-drift-2 {
+  animation: twinkle var(--duration, 3s) ease-in-out infinite,
+    star-drift 11s ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s), 0s;
+}
+
+/* Shooting stars */
+@keyframes shoot {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(18deg) scaleX(0.2); }
+  1% { opacity: 1; }
+  10% { opacity: 0; transform: translate3d(60vw, 35vh, 0) rotate(18deg) scaleX(1); }
+  100% { opacity: 0; transform: translate3d(60vw, 35vh, 0) rotate(18deg) scaleX(1); }
+}
+
+.shooting-star {
+  position: absolute;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, hsl(var(--foreground) / 0) 0%, hsl(var(--foreground) / 0.9) 60%, hsl(var(--nebula-cyan) / 0.9) 100%);
+  filter: drop-shadow(0 0 6px hsl(var(--nebula-cyan) / 0.7));
+  opacity: 0;
+  transform-origin: left center;
+  animation: shoot 16s linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+
+/* Soft nebula glows */
+.nebula-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.nebula-a {
+  width: 40vw;
+  height: 40vw;
+  top: -10vh;
+  left: -8vw;
+  background: radial-gradient(circle, hsl(var(--nebula-cyan)) 0%, transparent 70%);
+  animation: float 14s ease-in-out infinite;
+}
+
+.nebula-b {
+  width: 45vw;
+  height: 45vw;
+  bottom: -15vh;
+  right: -10vw;
+  background: radial-gradient(circle, hsl(var(--space-nebula)) 0%, transparent 70%);
+  animation: float 18s ease-in-out infinite reverse;
+}
+
+/* Infinite marquee for the people carousel */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee var(--marquee-duration, 40s) linear infinite;
+}
+
+.marquee-paused {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-pulse,
+  .status-pending,
+  .xp-fill::after,
+  .shine::after,
+  .animate-marquee,
+  .shooting-star,
+  .nebula-glow {
+    animation: none;
+  }
+}
+
