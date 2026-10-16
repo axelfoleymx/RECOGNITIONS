@@ -1,0 +1,1 @@
+ALTER TABLE public.votes ALTER COLUMN voter_user_id DROP NOT NULL;

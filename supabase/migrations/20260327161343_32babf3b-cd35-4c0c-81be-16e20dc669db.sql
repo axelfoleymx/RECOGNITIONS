@@ -1,0 +1,1 @@
+ALTER TABLE public.weeks ADD COLUMN diplomas_released boolean NOT NULL DEFAULT false;

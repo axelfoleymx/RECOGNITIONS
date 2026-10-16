@@ -1,0 +1,1 @@
+ALTER TABLE public.votes ADD COLUMN reason text NOT NULL DEFAULT '';

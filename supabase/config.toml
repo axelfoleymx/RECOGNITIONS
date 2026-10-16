@@ -1,0 +1,13 @@
+project_id = "nekhgmvpboepxktcdupa"
+
+[functions.admin-list-users]
+verify_jwt = false
+
+[functions.admin-confirm-user]
+verify_jwt = false
+
+[functions.admin-delete-user]
+verify_jwt = false
+
+[functions.generate-summary]
+verify_jwt = false
