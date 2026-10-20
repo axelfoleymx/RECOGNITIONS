@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -104,7 +105,8 @@ const Balloon = ({ delay, x, color }: { delay: number; x: string; color: string 
   </motion.div>
 );
 
-const UpcomingBirthdays = () => {
+/** `featured` = large banner at the top of the dashboard so nobody misses it. */
+const UpcomingBirthdays = ({ featured = false }: { featured?: boolean }) => {
   const [greeting, setGreeting] = useState<Person | null>(null);
   const { data: people } = useQuery({
     queryKey: ["birthdays-widget"],
@@ -140,14 +142,14 @@ const UpcomingBirthdays = () => {
   const isToday = hero?.days === 0;
 
   return (
-    <div className="w-full max-w-3xl mt-8">
+    <div className={cn("w-full", featured ? "" : "max-w-3xl mt-8")}>
       <div className="flex items-center gap-2 mb-3">
         <Cake className="h-4 w-4 text-accent" />
-        <h2 className="font-display text-xs tracking-widest text-accent uppercase">Cumpleaños</h2>
+        <h2 className={cn("font-display tracking-widest text-accent uppercase", featured ? "text-sm" : "text-xs")}>Cumpleaños</h2>
       </div>
 
       {hero && (
-        <div className="glass-card-glow p-6 relative overflow-hidden">
+        <div className={cn("glass-card-glow relative overflow-hidden", featured ? "p-6 md:p-8 border-primary/50" : "p-6")}>
           {isToday && (
             <>
               <Balloon delay={0} x="10%" color="🎈" />
@@ -161,7 +163,7 @@ const UpcomingBirthdays = () => {
               animate={isToday ? { scale: [1, 1.05, 1] } : undefined}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              <Avatar className="h-20 w-20 ring-2 ring-primary/50 shadow-[0_0_30px_hsl(var(--primary)/0.4)]">
+              <Avatar className={cn("ring-2 ring-primary/50 shadow-[0_0_30px_hsl(var(--primary)/0.4)]", featured ? "h-24 w-24 md:h-32 md:w-32" : "h-20 w-20")}>
                 <AvatarImage src={hero.person.photo_url ?? undefined} />
                 <AvatarFallback className="bg-primary/20 text-primary font-display">
                   {initials(hero.person.name)}
@@ -172,8 +174,8 @@ const UpcomingBirthdays = () => {
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                 {isToday ? "¡Hoy cumple años!" : "Próximo cumpleaños"}
               </p>
-              <p className="font-display text-xl text-foreground truncate">{hero.person.name}</p>
-              <p className="text-sm text-accent mt-1">
+              <p className={cn("font-display truncate", featured ? "text-3xl md:text-5xl font-black text-gold-gradient leading-tight" : "text-xl text-foreground")}>{hero.person.name}</p>
+              <p className={cn("text-accent mt-1", featured ? "text-base md:text-lg font-semibold" : "text-sm")}>
                 {relativeFuture(hero.days)} · {format(hero.date, "d 'de' MMMM", { locale: es })}
               </p>
             </div>

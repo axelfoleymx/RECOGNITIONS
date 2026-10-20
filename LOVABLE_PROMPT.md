@@ -10,6 +10,8 @@ MIGRACIONES (aplícalas en este orden, son aditivas: solo agregan tablas y colum
 - supabase/migrations/20261016000000_gamification.sql  → premios semanales, votos con cohetes, hitos, cooldown del Rocketer
 - supabase/migrations/20261016100000_gamification_v2.sql → encuesta de recognitions, autoevaluación (vale ½), premio extra semanal, autonominación
 - supabase/migrations/20261016200000_victory_video.sql → columna people.youtube_url (video de victoria)
+- supabase/migrations/20261019000000_mood_pulse.sql → clima del equipo (self_checkins.mood, wants_support, get_mood_pulse)
+NOTA (19 oct 2026): las 3 primeras YA están aplicadas en la base de datos real; solo falta la de mood_pulse. Todas son seguras de repetir.
 Después regenera los tipos de Supabase y confirma que src/integrations/supabase/types.ts incluye: award_categories, week_awards, award_votes, milestones, milestone_participants, self_checkins, people.youtube_url, recognitions.question_id / rating / pillar, y las funciones ensure_week_awards, propose_week_award, get_recent_rocketers, get_checkin_pulse.
 
 PRESENTACIÓN (solo admin)

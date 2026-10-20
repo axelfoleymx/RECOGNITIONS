@@ -313,6 +313,7 @@ export type Database = {
           created_at: string
           id: string
           milestone_ids: string[]
+          mood: number | null
           next_step: string
           person_id: string | null
           ratings: Json
@@ -320,6 +321,7 @@ export type Database = {
           speed: string
           updated_at: string
           user_id: string
+          wants_support: boolean
           week_id: string
         }
         Insert: {
@@ -327,6 +329,7 @@ export type Database = {
           created_at?: string
           id?: string
           milestone_ids?: string[]
+          mood?: number | null
           next_step?: string
           person_id?: string | null
           ratings?: Json
@@ -334,6 +337,7 @@ export type Database = {
           speed: string
           updated_at?: string
           user_id: string
+          wants_support?: boolean
           week_id: string
         }
         Update: {
@@ -341,6 +345,7 @@ export type Database = {
           created_at?: string
           id?: string
           milestone_ids?: string[]
+          mood?: number | null
           next_step?: string
           person_id?: string | null
           ratings?: Json
@@ -348,6 +353,7 @@ export type Database = {
           speed?: string
           updated_at?: string
           user_id?: string
+          wants_support?: boolean
           week_id?: string
         }
         Relationships: [
@@ -501,6 +507,10 @@ export type Database = {
     Functions: {
       ensure_week_awards: { Args: { _week_id: string }; Returns: undefined }
       get_or_create_current_week: { Args: never; Returns: string }
+      get_mood_pulse: {
+        Args: { _week_id: string }
+        Returns: { mood: number; total: number }[]
+      }
       get_checkin_pulse: {
         Args: { _week_id: string }
         Returns: { speed: string; total: number }[]

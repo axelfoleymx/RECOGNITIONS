@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import EmojiBurst from "@/components/EmojiBurst";
 import { cn } from "@/lib/utils";
 import {
@@ -10,6 +12,7 @@ import {
   GamePerson,
   Milestone,
   milestoneKind,
+  MOODS,
   SELF_WEIGHT,
   SelfCheckin,
   SpeedId,
@@ -74,6 +77,8 @@ const Speedometer = ({ speed }: { speed: SpeedId | null }) => {
 };
 
 const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked, onSave, onGoMilestones }: SelfCheckinPanelProps) => {
+  const [mood, setMood] = useState<number | null>(initial?.mood ?? null);
+  const [wantsSupport, setWantsSupport] = useState<boolean>(initial?.wants_support ?? false);
   const [speed, setSpeed] = useState<SpeedId | null>(initial?.speed ?? null);
   const [reason, setReason] = useState(initial?.reason ?? "");
   const [blockers, setBlockers] = useState<string[]>(initial?.blockers ?? []);
@@ -85,6 +90,8 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
 
   useEffect(() => {
     if (!initial) return;
+    setMood(initial.mood ?? null);
+    setWantsSupport(initial.wants_support ?? false);
     setSpeed(initial.speed);
     setReason(initial.reason);
     setBlockers(initial.blockers);
@@ -93,13 +100,13 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
     setRatings(initial.ratings || {});
   }, [initial]);
 
-  const valid = !!speed && reason.trim().length >= 10;
+  const valid = !!mood && !!speed && reason.trim().length >= 10;
 
   const save = async () => {
     if (!speed || !valid) return;
     setSaving(true);
     try {
-      await onSave({ speed, reason: reason.trim(), blockers: speed === "bajo" ? blockers : [], next_step: nextStep.trim(), milestone_ids: milestoneIds, ratings });
+      await onSave({ mood, wants_support: wantsSupport, speed, reason: reason.trim(), blockers: speed === "bajo" ? blockers : [], next_step: nextStep.trim(), milestone_ids: milestoneIds, ratings });
       setBurst((b) => b + 1);
     } finally {
       setSaving(false);
@@ -116,9 +123,53 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
         <Lock className="h-3.5 w-3.5" /> Privado: solo tú y RH ven tu autoevaluación. En la presentación solo se muestran totales del equipo.
       </div>
 
+      {/* Mood — the team-climate KPI */}
+      <div className="cockpit p-5 md:p-7">
+        <p className="hud-label text-neon mb-1">1 · ¿Cómo te sentiste esta semana?</p>
+        <p className="text-xs text-muted-foreground mb-4">Es el termómetro del clima del equipo. Se publica solo el total, nunca tu nombre.</p>
+        <div className="grid grid-cols-5 gap-2 md:gap-3">
+          {MOODS.map((m) => {
+            const on = mood === m.value;
+            return (
+              <motion.button
+                key={m.value}
+                type="button"
+                whileTap={{ scale: 0.92 }}
+                animate={on ? { y: -6, scale: 1.06 } : { y: 0, scale: 1 }}
+                onClick={() => setMood(m.value)}
+                aria-pressed={on}
+                aria-label={m.label}
+                className={cn(
+                  "rounded-2xl border py-3 md:py-5 flex flex-col items-center gap-1 transition-colors",
+                  on ? "" : "border-border/60 bg-muted/30 hover:bg-muted/60",
+                  mood && !on && "opacity-50",
+                )}
+                style={on ? { borderColor: `hsl(${m.hue})`, background: `hsl(${m.hue} / 0.15)`, boxShadow: `0 0 26px hsl(${m.hue} / 0.45)` } : undefined}
+              >
+                <span className="text-3xl md:text-5xl leading-none">{m.emoji}</span>
+                <span className="font-display text-[9px] md:text-xs font-bold uppercase tracking-wider" style={on ? { color: `hsl(${m.hue})` } : undefined}>
+                  {m.label}
+                </span>
+              </motion.button>
+            );
+          })}
+        </div>
+        {mood !== null && mood <= 2 && (
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-foreground/90 mt-4">
+            Gracias por decirlo. Una semana pesada le pasa a cualquiera; el equipo está para echarte la mano. 🫂
+          </motion.p>
+        )}
+        <div className="flex items-center gap-2 mt-4">
+          <Checkbox id="support" checked={wantsSupport} onCheckedChange={(v) => setWantsSupport(v === true)} />
+          <Label htmlFor="support" className="text-sm text-muted-foreground">
+            Me gustaría que alguien del equipo me eche la mano esta semana (solo lo ve RH)
+          </Label>
+        </div>
+      </div>
+
       {/* Speed */}
       <div className="cockpit p-5 md:p-7">
-        <p className="hud-label text-neon mb-3">1 · ¿A qué velocidad fuiste esta semana?</p>
+        <p className="hud-label text-neon mb-3">2 · ¿A qué velocidad fuiste?</p>
         <div className="flex flex-col items-center">
           <Speedometer speed={speed} />
           <p className="font-display text-xl mt-1" style={{ color: speed ? `hsl(${SPEEDS[speed].hue})` : undefined }}>
@@ -152,7 +203,7 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
       {/* Reason */}
       {speed && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="cockpit p-5 md:p-7 space-y-4">
-          <p className="hud-label text-neon">2 · Cuéntanos por qué</p>
+          <p className="hud-label text-neon">3 · Cuéntanos por qué</p>
           <p className="font-display text-lg text-foreground">{SPEEDS[speed].prompt}</p>
           <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Sé honesto/a, esto nos ayuda a ayudarte." maxLength={500} className="min-h-[110px] bg-muted/40" />
           {speed === "bajo" && (
@@ -184,7 +235,7 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
       {/* Milestones */}
       <div className="cockpit p-5 md:p-7">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <p className="hud-label text-neon">3 · ¿Qué hitos respaldan tu semana?</p>
+          <p className="hud-label text-neon">4 · ¿Qué hitos respaldan tu semana?</p>
           {onGoMilestones && (
             <button onClick={onGoMilestones} className="text-xs text-accent hover:underline">
               + Registrar un hito
@@ -221,7 +272,7 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
 
       {/* Self ratings */}
       <div className="cockpit p-5 md:p-7">
-        <p className="hud-label text-neon mb-1">4 · Califícate en las 5 preguntas</p>
+        <p className="hud-label text-neon mb-1">5 · Califícate en las 5 preguntas</p>
         <p className="text-xs text-muted-foreground mb-4">
           Tu autoevaluación vale <strong className="text-primary">½</strong> frente a un voto externo ({SELF_WEIGHT} × 🚀). Déjala vacía si no aplica.
         </p>

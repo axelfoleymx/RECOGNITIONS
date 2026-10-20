@@ -12,7 +12,11 @@ Reglas para TODOS los pasos:
 
 ## Base de datos
 
-IMPORTANTE: estas 3 migraciones YA ESTÁN APLICADAS en la base de datos (las tablas award_categories, week_awards, award_votes, milestones, milestone_participants, self_checkins y la columna people.youtube_url ya existen). NO las vuelvas a ejecutar y NO crees migraciones nuevas. Solo guarda estos 3 archivos tal cual en supabase/migrations/ para que el repositorio quede igual que la base de datos, y confirma que src/integrations/supabase/types.ts ya incluye esas tablas, las columnas recognitions.pillar / question_id / rating, award_votes.is_self, award_categories.is_custom / created_by, people.youtube_url y las funciones ensure_week_awards, propose_week_award, get_recent_rocketers y get_checkin_pulse. Si a types.ts le falta algo, regenéralo desde la base de datos (sin ejecutar SQL). Si de verdad alguna tabla o función NO existe, detente y avísame antes de ejecutar nada (los archivos son seguros de repetir, pero quiero saberlo).
+IMPORTANTE sobre la base de datos:
+- Las migraciones 20261016000000, 20261016100000 y 20261016200000 YA ESTÁN APLICADAS (las tablas award_categories, week_awards, award_votes, milestones, milestone_participants, self_checkins y la columna people.youtube_url ya existen). NO las vuelvas a ejecutar; solo guarda esos archivos tal cual en supabase/migrations/.
+- La migración 20261019000000_mood_pulse.sql es NUEVA: aplica SOLO esa (agrega self_checkins.mood, self_checkins.wants_support y la función get_mood_pulse). Es segura de repetir.
+- Después regenera src/integrations/supabase/types.ts desde la base de datos y confirma que incluye esas tablas y columnas (también recognitions.pillar / question_id / rating, award_votes.is_self, award_categories.is_custom / created_by) y las funciones ensure_week_awards, propose_week_award, get_recent_rocketers, get_checkin_pulse y get_mood_pulse.
+- No crees ninguna otra migración. Si algo de lo anterior no existe, detente y avísame antes de ejecutar nada.
 
 ### Archivo: `supabase/migrations/20261016000000_gamification.sql`
 
@@ -549,6 +553,33 @@ ALTER TABLE public.people ADD COLUMN IF NOT EXISTS youtube_url text;
 NOTIFY pgrst, 'reload schema';
 ~~~
 
+### Archivo: `supabase/migrations/20261019000000_mood_pulse.sql`
+
+~~~sql
+-- Idempotent: safe to run again on a database where it was already applied.
+-- Team climate (eNPS-style): each self-evaluation records how the person felt
+-- this week (1 = triste … 5 = ¡wow!) and whether they would like support.
+
+ALTER TABLE public.self_checkins
+  ADD COLUMN IF NOT EXISTS mood SMALLINT CHECK (mood BETWEEN 1 AND 5),
+  ADD COLUMN IF NOT EXISTS wants_support BOOLEAN NOT NULL DEFAULT false;
+
+-- Anonymous team climate (counts only) visible to everyone
+CREATE OR REPLACE FUNCTION public.get_mood_pulse(_week_id UUID)
+RETURNS TABLE (mood SMALLINT, total BIGINT)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT c.mood, count(*) FROM public.self_checkins c
+  WHERE c.week_id = _week_id AND c.mood IS NOT NULL
+  GROUP BY c.mood
+$$;
+
+NOTIFY pgrst, 'reload schema';
+~~~
+
 ---
 
 Paso 2 de 13 de la actualización "Rocketing Recognitions 2.0".
@@ -635,6 +666,10 @@ export type SelfCheckin = {
   next_step: string;
   milestone_ids: string[];
   ratings: Record<string, number>;
+  /** how the person felt this week, 1 (triste) … 5 (¡wow!) */
+  mood?: number | null;
+  /** asked for a hand from the team (only HR sees it) */
+  wants_support?: boolean;
 };
 
 /** Self-evaluation is worth half of an external vote. */
@@ -718,6 +753,34 @@ export const MAX_TOP_RATINGS = 3;
 export const RATING_LABELS = ["", "Bien", "Muy bien", "¡Épico!"];
 
 // --------------------------------------------------- self-evaluation
+
+// ---------------------------------------------------- team climate (eNPS)
+
+export const MOODS: { value: number; emoji: string; label: string; hue: string }[] = [
+  { value: 5, emoji: "🤩", label: "¡Wow!", hue: "44 100% 55%" },
+  { value: 4, emoji: "😊", label: "Feliz", hue: "146 85% 52%" },
+  { value: 3, emoji: "😐", label: "Normal", hue: "188 100% 55%" },
+  { value: 2, emoji: "😕", label: "Desanimado", hue: "28 95% 58%" },
+  { value: 1, emoji: "😢", label: "Triste", hue: "352 90% 62%" },
+];
+
+export const moodOf = (v: number | null | undefined) => MOODS.find((m) => m.value === v);
+
+/**
+ * eNPS-style climate index from mood counts: % happy (4–5) minus % sad (1–2),
+ * from −100 to +100. Neutral (3) counts in the total only.
+ */
+export const climateIndex = (counts: Record<number | string, number>) => {
+  const n = (v: number) => Number(counts[v] || 0);
+  const total = [1, 2, 3, 4, 5].reduce((t, v) => t + n(v), 0);
+  if (!total) return { total: 0, index: 0, positive: 0, negative: 0 };
+  const positive = (n(4) + n(5)) / total;
+  const negative = (n(1) + n(2)) / total;
+  return { total, index: Math.round((positive - negative) * 100), positive, negative };
+};
+
+export const climateLabel = (index: number) =>
+  index >= 50 ? "Excelente" : index >= 20 ? "Bueno" : index >= 0 ? "Regular" : "Necesita atención";
 
 export type SpeedId = "bajo" | "crucero" | "maximo";
 
@@ -890,7 +953,7 @@ export const launchSystems = (w: {
     { id: "recognitions", emoji: "🏅", title: "Recognitions", subtitle: "Encuesta de 5 preguntas", progress: w.surveyAnswered > 0 ? 1 : 0, goal: 1, xp: XP.completeSurvey, to: "/recognize" },
     { id: "rocketer", emoji: "🚀", title: "Rocketer", subtitle: "Elige al MVP", progress: w.votedRocketer ? 1 : 0, goal: 1, xp: XP.castRocketerVote, to: "/vote" },
     { id: "milestones", emoji: "🏁", title: "Hitos", subtitle: "Registra o súmate", progress: Math.min(1, w.milestonesTouched), goal: 1, xp: XP.createMilestone, to: "/milestones" },
-    { id: "checkin", emoji: "🪞", title: "Autoevaluación", subtitle: "¿A qué velocidad fuiste?", progress: w.checkinDone ? 1 : 0, goal: 1, xp: XP.selfCheckin, to: "/checkin" },
+    { id: "checkin", emoji: "🪞", title: "Autoevaluación", subtitle: "¿Cómo te sentiste esta semana?", progress: w.checkinDone ? 1 : 0, goal: 1, xp: XP.selfCheckin, to: "/checkin" },
   ];
 };
 

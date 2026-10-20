@@ -199,50 +199,43 @@ export default MilestonesPhase;
 
 ~~~tsx
 import { motion } from "framer-motion";
+import ClimateMeter from "@/components/game/ClimateMeter";
 import { SelfCheckin, SpeedId, SPEEDS } from "@/lib/gamification";
 
-/** Anonymous team self-evaluation: counts per speed + most common blockers. */
+/** Anonymous team climate (moods) as the headline; speed and blockers as context. */
 const PulsePhase = ({ checkins }: { checkins: SelfCheckin[] }) => {
-  const counts = (Object.keys(SPEEDS) as SpeedId[]).map((id) => ({ id, n: checkins.filter((c) => c.speed === id).length }));
+  const moodCounts: Record<number, number> = {};
+  checkins.forEach((c) => {
+    if (c.mood) moodCounts[c.mood] = (moodCounts[c.mood] || 0) + 1;
+  });
+  const speeds = (Object.keys(SPEEDS) as SpeedId[]).map((id) => ({ id, n: checkins.filter((c) => c.speed === id).length }));
   const blockers: Record<string, number> = {};
   checkins.forEach((c) => c.blockers?.forEach((b) => (blockers[b] = (blockers[b] || 0) + 1)));
   const topBlockers = Object.entries(blockers).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
   return (
-    <motion.div className="flex flex-col items-center justify-center h-full px-8 gap-10" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <motion.div className="flex flex-col items-center justify-center h-full px-6 md:px-12 gap-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div className="text-center">
-        <p className="hud-label text-neon">Autoevaluación · {checkins.length} respuestas</p>
-        <h2 className="font-display text-3xl md:text-5xl font-black text-gold-gradient">¿A qué velocidad volamos?</h2>
+        <p className="hud-label text-neon">Autoevaluación · anónimo</p>
+        <h2 className="font-display text-3xl md:text-5xl font-black text-gold-gradient">¿Cómo nos sentimos esta semana?</h2>
       </div>
-      <div className="grid grid-cols-3 gap-6 md:gap-10">
-        {counts.map(({ id, n }, i) => (
-          <motion.div
-            key={id}
-            initial={{ opacity: 0, y: 40, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: 0.3 + i * 0.25, type: "spring", stiffness: 140, damping: 13 }}
-            className="glass-card-glow px-6 md:px-10 py-6 flex flex-col items-center"
-          >
-            <span className="text-5xl md:text-7xl">{SPEEDS[id].emoji}</span>
-            <span className="font-display text-5xl md:text-7xl mt-2" style={{ color: `hsl(${SPEEDS[id].hue})` }}>
-              {n}
-            </span>
-            <span className="font-hud text-sm text-muted-foreground mt-1 text-center">{SPEEDS[id].label}</span>
-          </motion.div>
+
+      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="w-full max-w-3xl">
+        <ClimateMeter counts={moodCounts} size="xl" />
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="flex flex-wrap justify-center gap-3">
+        {speeds.map(({ id, n }) => (
+          <span key={id} className="chip bg-muted/60 text-foreground px-3 py-1.5 text-sm">
+            {SPEEDS[id].emoji} {SPEEDS[id].label} · {n}
+          </span>
         ))}
-      </div>
-      {topBlockers.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.3 }} className="text-center">
-          <p className="hud-label mb-2">Lo que más nos frenó</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {topBlockers.map(([b, n]) => (
-              <span key={b} className="chip bg-destructive/15 text-destructive border border-destructive/30 px-3 py-1.5 text-sm">
-                {b} · {n}
-              </span>
-            ))}
-          </div>
-        </motion.div>
-      )}
+        {topBlockers.map(([b, n]) => (
+          <span key={b} className="chip bg-destructive/15 text-destructive border border-destructive/30 px-3 py-1.5 text-sm">
+            Nos frenó: {b} · {n}
+          </span>
+        ))}
+      </motion.div>
     </motion.div>
   );
 };
@@ -1263,6 +1256,6 @@ Elimina el archivo `src/components/SongUploader.tsx` (ya no se usa; lo reemplaz�
 
 ### Verificación final
 
-Confirma que compila sin errores y revisa: inicio "Nave" con 5 sistemas; /awards; /recognize (encuesta); /vote; /milestones; /checkin; Admin → Premios y Admin → Autoevaluación; botón "🎬 Iniciar presentación" (solo admin) que abre la presentación con música de fondo (public/audio) y, si el ganador tiene video de YouTube, lo reproduce en la revelación. Dime si algo falló con el error exacto.
+Confirma que compila sin errores y revisa: que TODOS los enlaces del menú superior, de la barra inferior (celular) y los botones de la Nave abran su pantalla (/, /awards, /recognize, /vote, /milestones, /checkin, /my-recognitions, /admin); que el próximo cumpleaños salga arriba y en grande en la Nave; que la Nave muestre el "Clima del equipo" con caritas; inicio "Nave" con 5 sistemas; /awards; /recognize (encuesta); /vote; /milestones; /checkin; Admin → Premios y Admin → Autoevaluación; botón "🎬 Iniciar presentación" (solo admin) que abre la presentación con música de fondo (public/audio) y, si el ganador tiene video de YouTube, lo reproduce en la revelación. Dime si algo falló con el error exacto.
 ---
 

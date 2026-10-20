@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentWeek } from "@/hooks/useCurrentWeek";
 import {
-  useCheckinPulse,
+  useMoodPulse,
   useMyCheckin,
   useMyPerson,
   usePeople,
@@ -34,7 +34,7 @@ const Index = () => {
   const { data: recognitions = [] } = useWeekRecognitions(week?.id);
   const { data: milestones = [] } = useWeekMilestones(week?.id);
   const { data: myCheckin } = useMyCheckin(week?.id);
-  const { data: speedPulse } = useCheckinPulse(week?.id);
+  const { data: moodPulse } = useMoodPulse(week?.id);
 
   const { data: rocketerVotes = [] } = useQuery({
     queryKey: ["week-pulse", "rocketer-voters", week?.id],
@@ -79,7 +79,7 @@ const Index = () => {
         myPerson={me}
         stats={stats}
         systems={summary.systems}
-        speedPulse={speedPulse}
+        moodPulse={moodPulse}
         weekKey={week?.id}
         categories={categories}
         voteTotals={voteTotals}
@@ -90,13 +90,13 @@ const Index = () => {
         peopleById={summary.peopleById}
         team={summary.team}
         isAdmin={isAdmin}
+        topSlot={<UpcomingBirthdays featured />}
         topGivers={summary.topGivers}
         weekLabel={weekLabel}
         endDate={week?.end_date}
       />
       <div className="flex flex-col items-center mt-10">
         <PeopleCarousel />
-        <UpcomingBirthdays />
         <VictoryVideo />
       </div>
     </GameShell>

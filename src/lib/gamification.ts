@@ -69,6 +69,10 @@ export type SelfCheckin = {
   next_step: string;
   milestone_ids: string[];
   ratings: Record<string, number>;
+  /** how the person felt this week, 1 (triste) … 5 (¡wow!) */
+  mood?: number | null;
+  /** asked for a hand from the team (only HR sees it) */
+  wants_support?: boolean;
 };
 
 /** Self-evaluation is worth half of an external vote. */
@@ -152,6 +156,34 @@ export const MAX_TOP_RATINGS = 3;
 export const RATING_LABELS = ["", "Bien", "Muy bien", "¡Épico!"];
 
 // --------------------------------------------------- self-evaluation
+
+// ---------------------------------------------------- team climate (eNPS)
+
+export const MOODS: { value: number; emoji: string; label: string; hue: string }[] = [
+  { value: 5, emoji: "🤩", label: "¡Wow!", hue: "44 100% 55%" },
+  { value: 4, emoji: "😊", label: "Feliz", hue: "146 85% 52%" },
+  { value: 3, emoji: "😐", label: "Normal", hue: "188 100% 55%" },
+  { value: 2, emoji: "😕", label: "Desanimado", hue: "28 95% 58%" },
+  { value: 1, emoji: "😢", label: "Triste", hue: "352 90% 62%" },
+];
+
+export const moodOf = (v: number | null | undefined) => MOODS.find((m) => m.value === v);
+
+/**
+ * eNPS-style climate index from mood counts: % happy (4–5) minus % sad (1–2),
+ * from −100 to +100. Neutral (3) counts in the total only.
+ */
+export const climateIndex = (counts: Record<number | string, number>) => {
+  const n = (v: number) => Number(counts[v] || 0);
+  const total = [1, 2, 3, 4, 5].reduce((t, v) => t + n(v), 0);
+  if (!total) return { total: 0, index: 0, positive: 0, negative: 0 };
+  const positive = (n(4) + n(5)) / total;
+  const negative = (n(1) + n(2)) / total;
+  return { total, index: Math.round((positive - negative) * 100), positive, negative };
+};
+
+export const climateLabel = (index: number) =>
+  index >= 50 ? "Excelente" : index >= 20 ? "Bueno" : index >= 0 ? "Regular" : "Necesita atención";
 
 export type SpeedId = "bajo" | "crucero" | "maximo";
 
@@ -324,7 +356,7 @@ export const launchSystems = (w: {
     { id: "recognitions", emoji: "🏅", title: "Recognitions", subtitle: "Encuesta de 5 preguntas", progress: w.surveyAnswered > 0 ? 1 : 0, goal: 1, xp: XP.completeSurvey, to: "/recognize" },
     { id: "rocketer", emoji: "🚀", title: "Rocketer", subtitle: "Elige al MVP", progress: w.votedRocketer ? 1 : 0, goal: 1, xp: XP.castRocketerVote, to: "/vote" },
     { id: "milestones", emoji: "🏁", title: "Hitos", subtitle: "Registra o súmate", progress: Math.min(1, w.milestonesTouched), goal: 1, xp: XP.createMilestone, to: "/milestones" },
-    { id: "checkin", emoji: "🪞", title: "Autoevaluación", subtitle: "¿A qué velocidad fuiste?", progress: w.checkinDone ? 1 : 0, goal: 1, xp: XP.selfCheckin, to: "/checkin" },
+    { id: "checkin", emoji: "🪞", title: "Autoevaluación", subtitle: "¿Cómo te sentiste esta semana?", progress: w.checkinDone ? 1 : 0, goal: 1, xp: XP.selfCheckin, to: "/checkin" },
   ];
 };
 

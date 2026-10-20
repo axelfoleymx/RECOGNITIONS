@@ -109,3 +109,16 @@ La semana es una **misión con 5 sistemas**: Premios · Recognitions · Rocketer
 Pulso de autoevaluación → Hitos → **ranking animado por pregunta** (5 slides) → muro de medallas y comentarios (solo mensajes escritos) → premios → Rocketer.
 
 Migración: `supabase/migrations/20261016100000_gamification_v2.sql` (aplicar después de la v1).
+
+---
+
+## v3 — Clima del equipo (indicador principal de la autoevaluación)
+
+- La autoevaluación abre con **"¿Cómo te sentiste esta semana?"** en una escala de caritas: 🤩 ¡Wow! · 😊 Feliz · 😐 Normal · 😕 Desanimado · 😢 Triste.
+- **Índice de clima** (estilo eNPS): % de 🤩 y 😊 menos % de 😕 y 😢, de −100 a +100. Lectura: ≥ 50 Excelente · ≥ 20 Bueno · ≥ 0 Regular · < 0 Necesita atención.
+- Es **anónimo**: en la Nave y en la presentación solo se ve el total y la distribución de caritas, nunca nombres.
+- **Empatía:** si hay caritas tristes, el equipo ve "N compañeros no tuvieron una buena semana; un café, una ayuda o un recognition hacen la diferencia". Cada quien puede marcar "me gustaría que alguien me eche la mano" (solo lo ve RH; en Admin → Autoevaluación aparecen primero).
+- La velocidad ("bajo mi velocidad porque…") se mantiene como pregunta secundaria.
+- Meta sugerida: índice de clima ≥ +30 y que nadie que pidió apoyo pase la semana sin seguimiento.
+
+Migración: `supabase/migrations/20261019000000_mood_pulse.sql`.

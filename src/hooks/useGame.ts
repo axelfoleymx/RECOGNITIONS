@@ -268,3 +268,16 @@ export const useCheckinPulse = (weekId?: string) =>
         return Object.fromEntries((data || []).map((r) => [r.speed, Number(r.total)])) as Record<string, number>;
       }, {} as Record<string, number>),
   });
+
+/** Anonymous mood counts (1–5) for the team-climate index. */
+export const useMoodPulse = (weekId?: string) =>
+  useQuery({
+    queryKey: ["mood-pulse", weekId],
+    enabled: !!weekId,
+    queryFn: () =>
+      safe(async () => {
+        const { data, error } = await supabase.rpc("get_mood_pulse", { _week_id: weekId! });
+        if (error) throw error;
+        return Object.fromEntries((data || []).map((r) => [r.mood, Number(r.total)])) as Record<number, number>;
+      }, {} as Record<number, number>),
+  });

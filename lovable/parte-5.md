@@ -306,6 +306,8 @@ import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import EmojiBurst from "@/components/EmojiBurst";
 import { cn } from "@/lib/utils";
 import {
@@ -313,6 +315,7 @@ import {
   GamePerson,
   Milestone,
   milestoneKind,
+  MOODS,
   SELF_WEIGHT,
   SelfCheckin,
   SpeedId,
@@ -377,6 +380,8 @@ const Speedometer = ({ speed }: { speed: SpeedId | null }) => {
 };
 
 const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked, onSave, onGoMilestones }: SelfCheckinPanelProps) => {
+  const [mood, setMood] = useState<number | null>(initial?.mood ?? null);
+  const [wantsSupport, setWantsSupport] = useState<boolean>(initial?.wants_support ?? false);
   const [speed, setSpeed] = useState<SpeedId | null>(initial?.speed ?? null);
   const [reason, setReason] = useState(initial?.reason ?? "");
   const [blockers, setBlockers] = useState<string[]>(initial?.blockers ?? []);
@@ -388,6 +393,8 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
 
   useEffect(() => {
     if (!initial) return;
+    setMood(initial.mood ?? null);
+    setWantsSupport(initial.wants_support ?? false);
     setSpeed(initial.speed);
     setReason(initial.reason);
     setBlockers(initial.blockers);
@@ -396,13 +403,13 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
     setRatings(initial.ratings || {});
   }, [initial]);
 
-  const valid = !!speed && reason.trim().length >= 10;
+  const valid = !!mood && !!speed && reason.trim().length >= 10;
 
   const save = async () => {
     if (!speed || !valid) return;
     setSaving(true);
     try {
-      await onSave({ speed, reason: reason.trim(), blockers: speed === "bajo" ? blockers : [], next_step: nextStep.trim(), milestone_ids: milestoneIds, ratings });
+      await onSave({ mood, wants_support: wantsSupport, speed, reason: reason.trim(), blockers: speed === "bajo" ? blockers : [], next_step: nextStep.trim(), milestone_ids: milestoneIds, ratings });
       setBurst((b) => b + 1);
     } finally {
       setSaving(false);
@@ -419,9 +426,53 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
         <Lock className="h-3.5 w-3.5" /> Privado: solo tú y RH ven tu autoevaluación. En la presentación solo se muestran totales del equipo.
       </div>
 
+      {/* Mood — the team-climate KPI */}
+      <div className="cockpit p-5 md:p-7">
+        <p className="hud-label text-neon mb-1">1 · ¿Cómo te sentiste esta semana?</p>
+        <p className="text-xs text-muted-foreground mb-4">Es el termómetro del clima del equipo. Se publica solo el total, nunca tu nombre.</p>
+        <div className="grid grid-cols-5 gap-2 md:gap-3">
+          {MOODS.map((m) => {
+            const on = mood === m.value;
+            return (
+              <motion.button
+                key={m.value}
+                type="button"
+                whileTap={{ scale: 0.92 }}
+                animate={on ? { y: -6, scale: 1.06 } : { y: 0, scale: 1 }}
+                onClick={() => setMood(m.value)}
+                aria-pressed={on}
+                aria-label={m.label}
+                className={cn(
+                  "rounded-2xl border py-3 md:py-5 flex flex-col items-center gap-1 transition-colors",
+                  on ? "" : "border-border/60 bg-muted/30 hover:bg-muted/60",
+                  mood && !on && "opacity-50",
+                )}
+                style={on ? { borderColor: `hsl(${m.hue})`, background: `hsl(${m.hue} / 0.15)`, boxShadow: `0 0 26px hsl(${m.hue} / 0.45)` } : undefined}
+              >
+                <span className="text-3xl md:text-5xl leading-none">{m.emoji}</span>
+                <span className="font-display text-[9px] md:text-xs font-bold uppercase tracking-wider" style={on ? { color: `hsl(${m.hue})` } : undefined}>
+                  {m.label}
+                </span>
+              </motion.button>
+            );
+          })}
+        </div>
+        {mood !== null && mood <= 2 && (
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-foreground/90 mt-4">
+            Gracias por decirlo. Una semana pesada le pasa a cualquiera; el equipo está para echarte la mano. 🫂
+          </motion.p>
+        )}
+        <div className="flex items-center gap-2 mt-4">
+          <Checkbox id="support" checked={wantsSupport} onCheckedChange={(v) => setWantsSupport(v === true)} />
+          <Label htmlFor="support" className="text-sm text-muted-foreground">
+            Me gustaría que alguien del equipo me eche la mano esta semana (solo lo ve RH)
+          </Label>
+        </div>
+      </div>
+
       {/* Speed */}
       <div className="cockpit p-5 md:p-7">
-        <p className="hud-label text-neon mb-3">1 · ¿A qué velocidad fuiste esta semana?</p>
+        <p className="hud-label text-neon mb-3">2 · ¿A qué velocidad fuiste?</p>
         <div className="flex flex-col items-center">
           <Speedometer speed={speed} />
           <p className="font-display text-xl mt-1" style={{ color: speed ? `hsl(${SPEEDS[speed].hue})` : undefined }}>
@@ -455,7 +506,7 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
       {/* Reason */}
       {speed && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="cockpit p-5 md:p-7 space-y-4">
-          <p className="hud-label text-neon">2 · Cuéntanos por qué</p>
+          <p className="hud-label text-neon">3 · Cuéntanos por qué</p>
           <p className="font-display text-lg text-foreground">{SPEEDS[speed].prompt}</p>
           <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Sé honesto/a, esto nos ayuda a ayudarte." maxLength={500} className="min-h-[110px] bg-muted/40" />
           {speed === "bajo" && (
@@ -487,7 +538,7 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
       {/* Milestones */}
       <div className="cockpit p-5 md:p-7">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <p className="hud-label text-neon">3 · ¿Qué hitos respaldan tu semana?</p>
+          <p className="hud-label text-neon">4 · ¿Qué hitos respaldan tu semana?</p>
           {onGoMilestones && (
             <button onClick={onGoMilestones} className="text-xs text-accent hover:underline">
               + Registrar un hito
@@ -524,7 +575,7 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
 
       {/* Self ratings */}
       <div className="cockpit p-5 md:p-7">
-        <p className="hud-label text-neon mb-1">4 · Califícate en las 5 preguntas</p>
+        <p className="hud-label text-neon mb-1">5 · Califícate en las 5 preguntas</p>
         <p className="text-xs text-muted-foreground mb-4">
           Tu autoevaluación vale <strong className="text-primary">½</strong> frente a un voto externo ({SELF_WEIGHT} × 🚀). Déjala vacía si no aplica.
         </p>
@@ -599,6 +650,7 @@ const Checkin = () => {
     toast({ title: "Autoevaluación guardada 🪞", description: "Sistema de Autoevaluación en verde 🟢" });
     queryClient.invalidateQueries({ queryKey: ["checkin"] });
     queryClient.invalidateQueries({ queryKey: ["checkin-pulse"] });
+    queryClient.invalidateQueries({ queryKey: ["mood-pulse"] });
     queryClient.invalidateQueries({ queryKey: ["player-stats"] });
   };
 
@@ -837,12 +889,13 @@ export default AwardsAdmin;
 
 ~~~tsx
 import { usePeople, useWeekCheckins, useWeekMilestones } from "@/hooks/useGame";
-import { SpeedId, SPEEDS, SURVEY_QUESTIONS } from "@/lib/gamification";
+import { moodOf, SpeedId, SPEEDS, SURVEY_QUESTIONS } from "@/lib/gamification";
 import PlayerAvatar from "./PlayerAvatar";
+import ClimateMeter from "./ClimateMeter";
 
 const ORDER: SpeedId[] = ["bajo", "crucero", "maximo"];
 
-/** Admin/HR: private view of every self-evaluation of the week (slowest first). */
+/** Admin/HR: private view of every self-evaluation (who asked for support and lowest mood first). */
 const CheckinsAdmin = ({ weekId }: { weekId: string }) => {
   const { data: checkins = [] } = useWeekCheckins(weekId);
   const { data: people = [] } = usePeople();
@@ -850,10 +903,28 @@ const CheckinsAdmin = ({ weekId }: { weekId: string }) => {
   const byId = Object.fromEntries(people.map((p) => [p.id, p]));
   const msById = Object.fromEntries(milestones.map((m) => [m.id, m]));
   const pending = people.filter((p) => p.user_id && p.approved !== false && !checkins.some((c) => c.person_id === p.id));
-  const sorted = [...checkins].sort((a, b) => ORDER.indexOf(a.speed) - ORDER.indexOf(b.speed));
+  const sorted = [...checkins].sort(
+    (a, b) =>
+      Number(!!b.wants_support) - Number(!!a.wants_support) ||
+      (a.mood ?? 6) - (b.mood ?? 6) ||
+      ORDER.indexOf(a.speed) - ORDER.indexOf(b.speed),
+  );
+  const moodCounts: Record<number, number> = {};
+  checkins.forEach((c) => {
+    if (c.mood) moodCounts[c.mood] = (moodCounts[c.mood] || 0) + 1;
+  });
+  const supportCount = checkins.filter((c) => c.wants_support).length;
 
   return (
     <div className="space-y-4">
+      <div className="glass-card p-5">
+        <p className="hud-label mb-3">Clima del equipo (indicador principal)</p>
+        <ClimateMeter counts={moodCounts} nudge={false} />
+        {supportCount > 0 && (
+          <p className="mt-3 text-sm text-accent">🫂 {supportCount} persona{supportCount !== 1 && "s"} pidió que le echen la mano. Aparecen primero abajo.</p>
+        )}
+      </div>
+
       <div className="grid grid-cols-3 gap-3">
         {ORDER.map((id) => (
           <div key={id} className="glass-card p-4 text-center">
@@ -882,15 +953,22 @@ const CheckinsAdmin = ({ weekId }: { weekId: string }) => {
       {sorted.map((c) => {
         const p = c.person_id ? byId[c.person_id] : null;
         const sp = SPEEDS[c.speed];
+        const mood = moodOf(c.mood);
         return (
-          <div key={c.id} className="glass-card p-4 flex gap-4" style={{ borderLeft: `4px solid hsl(${sp.hue})` }}>
+          <div key={c.id} className="glass-card p-4 flex gap-4" style={{ borderLeft: `4px solid hsl(${(mood ?? sp).hue})` }}>
             <PlayerAvatar name={p?.name || "?"} photoUrl={p?.photo_url} size={44} ring="none" />
             <div className="flex-1 min-w-0 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-semibold">{p?.name || "Usuario sin persona vinculada"}</p>
+                {mood && (
+                  <span className="chip text-sm" style={{ background: `hsl(${mood.hue} / 0.15)`, color: `hsl(${mood.hue})` }}>
+                    {mood.emoji} {mood.label}
+                  </span>
+                )}
                 <span className="chip" style={{ background: `hsl(${sp.hue} / 0.15)`, color: `hsl(${sp.hue})` }}>
                   {sp.emoji} {sp.label}
                 </span>
+                {c.wants_support && <span className="chip bg-accent/20 text-accent">🫂 Pidió apoyo</span>}
               </div>
               <p className="text-sm text-foreground/90">
                 <span className="text-muted-foreground">{sp.prompt.replace("…", "")}</span> {c.reason}

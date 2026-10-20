@@ -31,6 +31,7 @@ const Checkin = () => {
     toast({ title: "Autoevaluación guardada 🪞", description: "Sistema de Autoevaluación en verde 🟢" });
     queryClient.invalidateQueries({ queryKey: ["checkin"] });
     queryClient.invalidateQueries({ queryKey: ["checkin-pulse"] });
+    queryClient.invalidateQueries({ queryKey: ["mood-pulse"] });
     queryClient.invalidateQueries({ queryKey: ["player-stats"] });
   };
 

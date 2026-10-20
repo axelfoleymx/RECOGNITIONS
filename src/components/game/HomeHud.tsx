@@ -12,8 +12,6 @@ import {
   Milestone,
   milestoneKind,
   PlayerStats,
-  SPEEDS,
-  SpeedId,
   xpFor,
 } from "@/lib/gamification";
 import LaunchPanel from "./LaunchPanel";
@@ -21,6 +19,7 @@ import GameButton from "./GameButton";
 import Trophy from "./Trophy";
 import PlayerAvatar from "./PlayerAvatar";
 import XpBar from "./XpBar";
+import ClimateMeter from "./ClimateMeter";
 
 export type TeamStats = {
   participation: number; // 0..1
@@ -35,7 +34,8 @@ export interface HomeHudProps {
   myPerson: GamePerson | null;
   stats: PlayerStats;
   systems: LaunchSystem[];
-  speedPulse?: Record<string, number>;
+  /** anonymous mood counts (1–5) for the team-climate index */
+  moodPulse?: Record<number, number>;
   weekKey?: string;
   categories: AwardCategory[];
   voteTotals: Record<string, number>;
@@ -46,6 +46,8 @@ export interface HomeHudProps {
   peopleById: Record<string, GamePerson>;
   team: TeamStats;
   isAdmin?: boolean;
+  /** shown above everything (e.g. the upcoming birthday banner) */
+  topSlot?: React.ReactNode;
   topGivers: { person: GamePerson; xp: number }[];
   weekLabel: string;
   endDate?: string;
@@ -85,6 +87,7 @@ const HomeHud = (p: HomeHudProps) => {
 
   return (
     <div className="space-y-5">
+      {p.topSlot}
       {p.isAdmin && (
         <div className="cockpit p-4 flex flex-col sm:flex-row items-center gap-3 justify-between">
           <div>
@@ -104,6 +107,10 @@ const HomeHud = (p: HomeHudProps) => {
         endDate={p.endDate}
         onGo={(to) => navigate(to)}
       />
+
+      <Section title="🌡️ Clima del equipo esta semana" action="Tu autoevaluación" onAction={() => navigate("/checkin")} i={1}>
+        <ClimateMeter counts={p.moodPulse ?? {}} />
+      </Section>
 
       <div className="grid lg:grid-cols-3 gap-5">
         {/* Player card */}
@@ -268,21 +275,6 @@ const HomeHud = (p: HomeHudProps) => {
               ))}
             </div>
           </div>
-          {p.speedPulse && Object.keys(p.speedPulse).length > 0 && (
-            <>
-              <p className="hud-label mt-5 mb-2">Autoevaluación del equipo</p>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                {(Object.keys(SPEEDS) as SpeedId[]).map((id) => (
-                  <div key={id} className="rounded-lg bg-muted/40 py-2" title={SPEEDS[id].label}>
-                    <p className="text-lg leading-none">{SPEEDS[id].emoji}</p>
-                    <p className="font-display text-base mt-1" style={{ color: `hsl(${SPEEDS[id].hue})` }}>
-                      {p.speedPulse![id] || 0}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
           <p className="hud-label mt-5 mb-2">Top embajadores (XP dado)</p>
           <ol className="space-y-2">
             {p.topGivers.slice(0, 5).map((g, i) => (

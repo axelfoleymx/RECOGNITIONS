@@ -3,6 +3,8 @@
 // without signing in or touching Supabase.
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import UpcomingBirthdays from "@/components/UpcomingBirthdays";
 import GameShell from "@/components/game/GameShell";
 import HomeHud from "@/components/game/HomeHud";
 import AwardsArena from "@/components/game/AwardsArena";
@@ -93,11 +95,33 @@ const MILESTONES: Milestone[] = [
 ];
 
 const OTHER_CHECKINS: SelfCheckin[] = [
-  { week_id: "w", user_id: "user-1", person_id: "p1", speed: "maximo", reason: "Cerré dos campañas", blockers: [], next_step: "", milestone_ids: ["m1"], ratings: { "a-tiempo": 3 } },
-  { week_id: "w", user_id: "user-2", person_id: "p2", speed: "crucero", reason: "Semana normal", blockers: [], next_step: "", milestone_ids: [], ratings: {} },
-  { week_id: "w", user_id: "user-3", person_id: "p3", speed: "bajo", reason: "Esperé aprobaciones", blockers: ["Esperando al cliente"], next_step: "", milestone_ids: [], ratings: { ayuda: 2 } },
-  { week_id: "w", user_id: "user-6", person_id: "p6", speed: "maximo", reason: "Mucho avance", blockers: [], next_step: "", milestone_ids: [], ratings: {} },
-  { week_id: "w", user_id: "user-8", person_id: "p8", speed: "bajo", reason: "Me enfermé", blockers: ["Tema personal / salud", "Esperando al cliente"], next_step: "", milestone_ids: [], ratings: {} },
+  { week_id: "w", user_id: "user-1", mood: 5, wants_support: false, person_id: "p1", speed: "maximo", reason: "Cerré dos campañas", blockers: [], next_step: "", milestone_ids: ["m1"], ratings: { "a-tiempo": 3 } },
+  { week_id: "w", user_id: "user-2", mood: 4, wants_support: false, person_id: "p2", speed: "crucero", reason: "Semana normal", blockers: [], next_step: "", milestone_ids: [], ratings: {} },
+  { week_id: "w", user_id: "user-3", mood: 2, wants_support: false, person_id: "p3", speed: "bajo", reason: "Esperé aprobaciones", blockers: ["Esperando al cliente"], next_step: "", milestone_ids: [], ratings: { ayuda: 2 } },
+  { week_id: "w", user_id: "user-6", mood: 4, wants_support: false, person_id: "p6", speed: "maximo", reason: "Mucho avance", blockers: [], next_step: "", milestone_ids: [], ratings: {} },
+  { week_id: "w", user_id: "user-8", mood: 1, wants_support: true, person_id: "p8", speed: "bajo", reason: "Me enfermé", blockers: ["Tema personal / salud", "Esperando al cliente"], next_step: "", milestone_ids: [], ratings: {} },
+];
+
+// Sample birthdays relative to today so the banner always shows in the demo
+const birthdayIn = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return `1995-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+// Current Monday–Friday so the countdown is always live in the demo
+const demoWeek = (() => {
+  const mon = new Date();
+  mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+  const fri = new Date(mon);
+  fri.setDate(mon.getDate() + 4);
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const fmt = (d: Date) => d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+  return { end: iso(fri), label: `${fmt(mon)} – ${fmt(fri)} ${fri.getFullYear()}` };
+})();
+
+const DEMO_BIRTHDAYS = [
+  { id: "p1", name: "Sofía Ramírez", photo_url: null, birthday: birthdayIn(2), song_url: null },
+  { id: "p2", name: "Diego Hernández", photo_url: null, birthday: birthdayIn(9), song_url: null },
 ];
 
 const TABS = ["Nave", "Premios", "Recognitions", "Rocketer", "Hitos", "Autoevaluación", "Presentación"] as const;
@@ -127,6 +151,12 @@ const Demo = () => {
     window.scrollTo({ top: 0 });
   };
   const recognizeTarget = new URLSearchParams(location.search).get("to");
+  const queryClient = useQueryClient();
+  // Feed the birthday widget sample data and keep it from refetching
+  useState(() => {
+    queryClient.setQueryDefaults(["birthdays-widget"], { staleTime: Infinity });
+    queryClient.setQueryData(["birthdays-widget"], DEMO_BIRTHDAYS);
+  });
   const [votes, setVotes] = useState<AwardVote[]>(seedVotes);
   const [categories, setCategories] = useState(BASE_CATEGORIES);
   const [recs, setRecs] = useState<WeekRecognition[]>(seedRecs);
@@ -153,7 +183,7 @@ const Demo = () => {
     awardsWon: 2, rocketerWins: 0, bestWeekAwardVotes: Math.max(4, myVotes.length),
   };
   const allCheckins = checkin ? [...OTHER_CHECKINS, checkin] : OTHER_CHECKINS;
-  const speedPulse = allCheckins.reduce<Record<string, number>>((t, c) => ((t[c.speed] = (t[c.speed] || 0) + 1), t), {});
+  const moodPulse = allCheckins.reduce<Record<number, number>>((t, c) => (c.mood ? ((t[c.mood] = (t[c.mood] || 0) + 1), t) : t), {});
   const radarIds = new Set(summary.radar.map((p) => p.id));
 
   if (tab === "Presentación") {
@@ -206,10 +236,11 @@ const Demo = () => {
 
       {tab === "Nave" && (
         <HomeHud
-          playerName="Axel Martínez" myPerson={PEOPLE[0]} stats={stats} systems={summary.systems} speedPulse={speedPulse} weekKey="demo"
+          playerName="Axel Martínez" myPerson={PEOPLE[0]} stats={stats} systems={summary.systems} moodPulse={moodPulse} weekKey="demo"
           categories={categories} voteTotals={voteTotals} myAwardVotes={summary.myAwardVotes} votedRocketer={!!rocketer}
           radar={summary.radar.filter((p) => p.user_id !== ME)} milestones={milestones} peopleById={summary.peopleById}
-          team={summary.team} topGivers={summary.topGivers} weekLabel="13 oct – 17 oct 2026" endDate="2026-10-17" isAdmin
+          team={summary.team} topGivers={summary.topGivers} weekLabel={demoWeek.label} endDate={demoWeek.end} isAdmin
+          topSlot={<UpcomingBirthdays featured />}
         />
       )}
 
@@ -225,7 +256,7 @@ const Demo = () => {
 
       {tab === "Premios" && (
         <>
-          <AwardsHeader endDate="2026-10-17" />
+          <AwardsHeader endDate={demoWeek.end} />
           <AwardsArena
             people={PEOPLE} categories={categories} myVotes={myVotes} voteTotals={voteTotals} myUserId={ME}
             canPropose={!categories.some((c) => c.is_custom)}
