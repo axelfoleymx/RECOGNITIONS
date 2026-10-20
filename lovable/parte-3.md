@@ -15,8 +15,8 @@ Reglas para TODOS los pasos:
 ### Archivo: `src/components/game/GameShell.tsx`
 
 ~~~tsx
-import { ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { ReactNode, useEffect } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Award, Flag, Gauge, Home, LogOut, Medal, Rocket, Shield, Trophy } from "lucide-react";
 import StarField from "@/components/StarField";
 import VoteReminderBanner from "@/components/VoteReminderBanner";
@@ -69,6 +69,12 @@ const AuthPlayerChip = () => {
 const GameShell = ({ children, player, hideReminder }: GameShellProps) => {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  // Each screen opens at the top (the router keeps the previous scroll otherwise)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
     <div className="min-h-screen space-gradient relative overflow-x-clip">
@@ -460,7 +466,7 @@ const VictoryVideo = () => {
         </span>
         <div className="min-w-0">
           <p className="font-display text-sm font-bold tracking-wider">Mi video de victoria</p>
-          <p className="text-xs text-muted-foreground">Pega un link de YouTube: sonará en la presentación si ganas el Rocketer.</p>
+          <p className="text-xs text-muted-foreground">Pega un link de YouTube: sonará en la presentación si ganas el Rocketer. Si ya tenías canción subida y no pones video, se sigue usando tu canción.</p>
         </div>
       </div>
       <div className="flex flex-col sm:flex-row gap-2">

@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { ReactNode, useEffect } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Award, Flag, Gauge, Home, LogOut, Medal, Rocket, Shield, Trophy } from "lucide-react";
 import StarField from "@/components/StarField";
 import VoteReminderBanner from "@/components/VoteReminderBanner";
@@ -52,6 +52,12 @@ const AuthPlayerChip = () => {
 const GameShell = ({ children, player, hideReminder }: GameShellProps) => {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  // Each screen opens at the top (the router keeps the previous scroll otherwise)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
     <div className="min-h-screen space-gradient relative overflow-x-clip">

@@ -1,3 +1,4 @@
+-- Idempotent: safe to run again on a database where it was already applied.
 -- Gamification 2.0: weekly mini-awards with rocket-level peer votes,
 -- milestones (hitos) with participants, pillar tags on recognitions,
 -- and anti-favoritism rules (no self-votes, max 2 awards per nominee, Rocketer cooldown).
@@ -10,7 +11,7 @@ ALTER TABLE public.recognitions ADD COLUMN IF NOT EXISTS pillar text;
 -- ---------------------------------------------------------------
 -- Award catalog
 -- ---------------------------------------------------------------
-CREATE TABLE public.award_categories (
+CREATE TABLE IF NOT EXISTS public.award_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   slug TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
@@ -24,9 +25,11 @@ CREATE TABLE public.award_categories (
 
 ALTER TABLE public.award_categories ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated can read award categories" ON public.award_categories;
 CREATE POLICY "Authenticated can read award categories" ON public.award_categories
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Admins can manage award categories" ON public.award_categories;
 CREATE POLICY "Admins can manage award categories" ON public.award_categories
   FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
@@ -44,12 +47,13 @@ INSERT INTO public.award_categories (slug, name, description, emoji, pillar, sor
   ('apagafuegos',  'Apagafuegos',              'Resolvió una urgencia o crisis con cabeza fría.',                         '🔥', 'cliente',       9),
   ('cero-errores', 'Cero Retrabajos',          'Calidad impecable a la primera. Nada regresa.',                           '🎯', 'productividad', 10),
   ('cierra-tratos','Cierra Tratos',            'Ganó, retuvo o creció una cuenta.',                                      '💰', 'emprendedor',   11),
-  ('aprendiz',     'Aprendiz Imparable',       'Aprendió algo nuevo y lo compartió con el equipo.',                      '📚', 'crecimiento',   12);
+  ('aprendiz',     'Aprendiz Imparable',       'Aprendió algo nuevo y lo compartió con el equipo.',                      '📚', 'crecimiento',   12)
+ON CONFLICT (slug) DO NOTHING;
 
 -- ---------------------------------------------------------------
 -- Which 5 awards are active in a given week
 -- ---------------------------------------------------------------
-CREATE TABLE public.week_awards (
+CREATE TABLE IF NOT EXISTS public.week_awards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   week_id UUID NOT NULL REFERENCES public.weeks(id) ON DELETE CASCADE,
   category_id UUID NOT NULL REFERENCES public.award_categories(id) ON DELETE CASCADE,
@@ -59,9 +63,11 @@ CREATE TABLE public.week_awards (
 
 ALTER TABLE public.week_awards ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated can read week awards" ON public.week_awards;
 CREATE POLICY "Authenticated can read week awards" ON public.week_awards
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Admins can manage week awards" ON public.week_awards;
 CREATE POLICY "Admins can manage week awards" ON public.week_awards
   FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
@@ -98,7 +104,7 @@ $$;
 -- ---------------------------------------------------------------
 -- Peer votes per award, with rocket level 1..3
 -- ---------------------------------------------------------------
-CREATE TABLE public.award_votes (
+CREATE TABLE IF NOT EXISTS public.award_votes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   week_id UUID NOT NULL REFERENCES public.weeks(id) ON DELETE CASCADE,
   category_id UUID NOT NULL REFERENCES public.award_categories(id) ON DELETE CASCADE,
@@ -112,9 +118,11 @@ CREATE TABLE public.award_votes (
 
 ALTER TABLE public.award_votes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated can read award votes" ON public.award_votes;
 CREATE POLICY "Authenticated can read award votes" ON public.award_votes
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Users can cast own award votes in open weeks" ON public.award_votes;
 CREATE POLICY "Users can cast own award votes in open weeks" ON public.award_votes
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -122,6 +130,7 @@ CREATE POLICY "Users can cast own award votes in open weeks" ON public.award_vot
     AND EXISTS (SELECT 1 FROM public.weeks w WHERE w.id = week_id AND w.status = 'open')
   );
 
+DROP POLICY IF EXISTS "Users can update own award votes in open weeks" ON public.award_votes;
 CREATE POLICY "Users can update own award votes in open weeks" ON public.award_votes
   FOR UPDATE TO authenticated
   USING (auth.uid() = voter_user_id)
@@ -130,10 +139,12 @@ CREATE POLICY "Users can update own award votes in open weeks" ON public.award_v
     AND EXISTS (SELECT 1 FROM public.weeks w WHERE w.id = week_id AND w.status = 'open')
   );
 
+DROP POLICY IF EXISTS "Users can delete own award votes" ON public.award_votes;
 CREATE POLICY "Users can delete own award votes" ON public.award_votes
   FOR DELETE TO authenticated
   USING (auth.uid() = voter_user_id);
 
+DROP POLICY IF EXISTS "Admins can delete award votes" ON public.award_votes;
 CREATE POLICY "Admins can delete award votes" ON public.award_votes
   FOR DELETE TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
@@ -167,6 +178,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS validate_award_vote ON public.award_votes;
 CREATE TRIGGER validate_award_vote
   BEFORE INSERT OR UPDATE ON public.award_votes
   FOR EACH ROW EXECUTE FUNCTION public.validate_award_vote();
@@ -215,6 +227,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS validate_rocketer_vote ON public.votes;
 CREATE TRIGGER validate_rocketer_vote
   BEFORE INSERT ON public.votes
   FOR EACH ROW EXECUTE FUNCTION public.validate_rocketer_vote();
@@ -222,7 +235,7 @@ CREATE TRIGGER validate_rocketer_vote
 -- ---------------------------------------------------------------
 -- Milestones (hitos) of the week + participants
 -- ---------------------------------------------------------------
-CREATE TABLE public.milestones (
+CREATE TABLE IF NOT EXISTS public.milestones (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   week_id UUID NOT NULL REFERENCES public.weeks(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -235,22 +248,26 @@ CREATE TABLE public.milestones (
 
 ALTER TABLE public.milestones ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated can read milestones" ON public.milestones;
 CREATE POLICY "Authenticated can read milestones" ON public.milestones
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Users can create milestones" ON public.milestones;
 CREATE POLICY "Users can create milestones" ON public.milestones
   FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = created_by);
 
+DROP POLICY IF EXISTS "Owners or admins can update milestones" ON public.milestones;
 CREATE POLICY "Owners or admins can update milestones" ON public.milestones
   FOR UPDATE TO authenticated
   USING (auth.uid() = created_by OR public.has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "Owners or admins can delete milestones" ON public.milestones;
 CREATE POLICY "Owners or admins can delete milestones" ON public.milestones
   FOR DELETE TO authenticated
   USING (auth.uid() = created_by OR public.has_role(auth.uid(), 'admin'));
 
-CREATE TABLE public.milestone_participants (
+CREATE TABLE IF NOT EXISTS public.milestone_participants (
   milestone_id UUID NOT NULL REFERENCES public.milestones(id) ON DELETE CASCADE,
   person_id UUID NOT NULL REFERENCES public.people(id) ON DELETE CASCADE,
   PRIMARY KEY (milestone_id, person_id)
@@ -258,9 +275,11 @@ CREATE TABLE public.milestone_participants (
 
 ALTER TABLE public.milestone_participants ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated can read milestone participants" ON public.milestone_participants;
 CREATE POLICY "Authenticated can read milestone participants" ON public.milestone_participants
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Owners or admins can add participants" ON public.milestone_participants;
 CREATE POLICY "Owners or admins can add participants" ON public.milestone_participants
   FOR INSERT TO authenticated
   WITH CHECK (EXISTS (
@@ -268,6 +287,7 @@ CREATE POLICY "Owners or admins can add participants" ON public.milestone_partic
     WHERE m.id = milestone_id AND (m.created_by = auth.uid() OR public.has_role(auth.uid(), 'admin'))
   ));
 
+DROP POLICY IF EXISTS "Owners or admins can remove participants" ON public.milestone_participants;
 CREATE POLICY "Owners or admins can remove participants" ON public.milestone_participants
   FOR DELETE TO authenticated
   USING (EXISTS (
@@ -275,7 +295,15 @@ CREATE POLICY "Owners or admins can remove participants" ON public.milestone_par
     WHERE m.id = milestone_id AND (m.created_by = auth.uid() OR public.has_role(auth.uid(), 'admin'))
   ));
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.award_votes;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.milestones;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'award_votes') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.award_votes;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'milestones') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.milestones;
+  END IF;
+END $$;
 
 NOTIFY pgrst, 'reload schema';

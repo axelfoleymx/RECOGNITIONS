@@ -680,7 +680,7 @@ import AwardsPhase from "./celebration/AwardsPhase";
 import SurveyPhase from "./celebration/SurveyPhase";
 import PulsePhase from "./celebration/PulsePhase";
 import { usePeople, useWeekAwards, useWeekAwardVotes, useWeekCheckins, useWeekMilestones } from "@/hooks/useGame";
-import { awardStandings, questionOf, SURVEY_QUESTIONS, surveyStandings } from "@/lib/gamification";
+import { awardStandings, questionOf, SURVEY_QUESTIONS, surveyStandings, youtubeId } from "@/lib/gamification";
 import BirthdaysPhase, { BirthdayPerson } from "./celebration/BirthdaysPhase";
 import TopVotedPhase from "./celebration/TopVotedPhase";
 import SuspensePhase from "./celebration/SuspensePhase";
@@ -705,7 +705,8 @@ interface CelebrationExperienceProps {
   recognitions: Recognition[];
   sortedVotes: VoteEntry[];
   onClose: () => void;
-  /** YouTube link of the (single) winner, played on the reveal slide */
+  /** Winner's media: a YouTube link plays as video on the reveal slide; any
+   *  other URL (legacy uploaded MP3) plays as the reveal music. */
   winnerVideoUrl?: string | null;
 }
 
@@ -751,6 +752,8 @@ const CelebrationExperience = ({
   winnerVideoUrl,
 }: CelebrationExperienceProps) => {
   const [phase, setPhase] = useState<Phase>("intro");
+  const winnerHasVideo = !!youtubeId(winnerVideoUrl);
+  const winnerAudioUrl = !winnerHasVideo && winnerVideoUrl ? winnerVideoUrl : null;
   // Survey answers are shown as one ranking per question; only written
   // comments and extra medals go to the condensed wall (one card per person).
   const commentRecs = useMemo(
@@ -818,7 +821,7 @@ const CelebrationExperience = ({
     drumroll.volume = volume * 1.3;
     drumrollRef.current = drumroll;
 
-    const reveal = new Audio("/audio/Winner_Reveal.mp3");
+    const reveal = new Audio(winnerAudioUrl || "/audio/Winner_Reveal.mp3");
     reveal.loop = true;
     reveal.volume = volume;
     revealRef.current = reveal;
@@ -847,7 +850,7 @@ const CelebrationExperience = ({
       if (p === "pulse" || p === "milestones" || p === "survey" || p === "recognitions" || p === "awards" || p === "top") return "audio";
       if (p === "suspense") return "drumroll";
       // The winner's YouTube video brings its own audio on the reveal slide
-      if (p === "reveal") return winnerVideoUrl ? null : "reveal";
+      if (p === "reveal") return winnerHasVideo ? null : "reveal";
       if (p === "closing") return "reveal";
       return null;
     };
@@ -1223,7 +1226,7 @@ const CelebrationExperience = ({
                 photoUrl: w.photoUrl,
                 voteCount: w.count,
               }))}
-              videoUrl={winners.length === 1 ? winnerVideoUrl : null}
+              videoUrl={winners.length === 1 && winnerHasVideo ? winnerVideoUrl : null}
             />
           )}
 
@@ -1250,13 +1253,13 @@ export default CelebrationExperience;
 
 ### Cambios en `src/pages/Admin.tsx` (solo estos 3 reemplazos puntuales)
 
-1. En la consulta de votos cambia `.select("*, people:voted_person_id(name, photo_url, song_url)")` por `.select("*, people:voted_person_id(name, photo_url, youtube_url)")`
-2. Cambia `const songUrl = v.people?.song_url;` por `const songUrl = v.people?.youtube_url;`
+1. En la consulta de votos cambia `.select("*, people:voted_person_id(name, photo_url, song_url)")` por `.select("*, people:voted_person_id(name, photo_url, song_url, youtube_url)")`
+2. Cambia `const songUrl = v.people?.song_url;` por `const songUrl = v.people?.youtube_url || v.people?.song_url;` (el video de YouTube tiene prioridad; si no hay, se usa la canción MP3 que la persona ya había subido)
 3. En `<CelebrationExperience ... />` cambia la prop `winnerSongUrl={(() => {` por `winnerVideoUrl={(() => {` (el resto de esa función queda igual).
 
 ### Limpieza
 
-Elimina el archivo `src/components/SongUploader.tsx` (ya no se usa; lo reemplazó `VictoryVideo.tsx`). NO borres el bucket "songs" ni la columna people.song_url.
+Elimina el archivo `src/components/SongUploader.tsx` (ya no se usa; lo reemplazó `VictoryVideo.tsx`). NO borres el bucket "songs" ni la columna people.song_url: las canciones que ya subieron se siguen usando cuando el ganador no tiene video.
 
 ### Verificación final
 

@@ -2,6 +2,7 @@
 // Renders every gamified screen with mock data so the UI can be reviewed
 // without signing in or touching Supabase.
 import { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import GameShell from "@/components/game/GameShell";
 import HomeHud from "@/components/game/HomeHud";
 import AwardsArena from "@/components/game/AwardsArena";
@@ -100,9 +101,32 @@ const OTHER_CHECKINS: SelfCheckin[] = [
 ];
 
 const TABS = ["Nave", "Premios", "Recognitions", "Rocketer", "Hitos", "Autoevaluación", "Presentación"] as const;
+type Tab = (typeof TABS)[number] | "Diploma";
+
+// The demo follows the same URLs as the real app, so the top menu, the
+// bottom bar and the dashboard buttons all switch screens here too.
+const TAB_PATH: Record<Tab, string> = {
+  Nave: "/",
+  Premios: "/awards",
+  Recognitions: "/recognize",
+  Rocketer: "/vote",
+  Hitos: "/milestones",
+  Autoevaluación: "/checkin",
+  Presentación: "/admin",
+  Diploma: "/my-recognitions",
+};
+const tabForPath = (path: string): Tab =>
+  (Object.entries(TAB_PATH).find(([, p]) => p === path)?.[0] as Tab | undefined) ?? "Nave";
 
 const Demo = () => {
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Nave");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const tab = tabForPath(location.pathname);
+  const setTab = (t: Tab) => {
+    navigate(TAB_PATH[t]);
+    window.scrollTo({ top: 0 });
+  };
+  const recognizeTarget = new URLSearchParams(location.search).get("to");
   const [votes, setVotes] = useState<AwardVote[]>(seedVotes);
   const [categories, setCategories] = useState(BASE_CATEGORIES);
   const [recs, setRecs] = useState<WeekRecognition[]>(seedRecs);
@@ -185,8 +209,18 @@ const Demo = () => {
           playerName="Axel Martínez" myPerson={PEOPLE[0]} stats={stats} systems={summary.systems} speedPulse={speedPulse} weekKey="demo"
           categories={categories} voteTotals={voteTotals} myAwardVotes={summary.myAwardVotes} votedRocketer={!!rocketer}
           radar={summary.radar.filter((p) => p.user_id !== ME)} milestones={milestones} peopleById={summary.peopleById}
-          team={summary.team} topGivers={summary.topGivers} weekLabel="13 oct – 17 oct 2026" endDate="2026-10-17"
+          team={summary.team} topGivers={summary.topGivers} weekLabel="13 oct – 17 oct 2026" endDate="2026-10-17" isAdmin
         />
+      )}
+
+      {tab === "Diploma" && (
+        <div className="cockpit p-8 text-center space-y-2">
+          <p className="text-5xl">🎓</p>
+          <h1 className="font-display text-2xl text-gold-gradient">Mi Diploma</h1>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            En la app real aquí ves tu diploma de la semana con los reconocimientos que recibiste. Esta pantalla no cambia con el rediseño.
+          </p>
+        </div>
       )}
 
       {tab === "Premios" && (
@@ -210,6 +244,7 @@ const Demo = () => {
       {tab === "Recognitions" && (
         <RecognitionSurvey
           people={PEOPLE} myUserId={ME} radarIds={radarIds} alreadyDone={surveyDone} onFinish={() => setTab("Nave")}
+          initialPersonId={recognizeTarget}
           onSubmit={async ({ answers, extra, anonymous }) =>
             setRecs((cur) => [
               ...cur,

@@ -1,3 +1,4 @@
+-- Idempotent: safe to run again on a database where it was already applied.
 -- Gamification v2:
 --  * Recognitions survey (question + 1..3 rating per person, bulk friendly)
 --  * Self-evaluation check-in (speed + reason + blockers + linked milestones + self ratings worth 1/2)
@@ -128,7 +129,7 @@ $$;
 -- ---------------------------------------------------------------
 -- Self-evaluation check-in (private: owner + admins)
 -- ---------------------------------------------------------------
-CREATE TABLE public.self_checkins (
+CREATE TABLE IF NOT EXISTS public.self_checkins (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   week_id UUID NOT NULL REFERENCES public.weeks(id) ON DELETE CASCADE,
   user_id UUID NOT NULL,
@@ -146,10 +147,12 @@ CREATE TABLE public.self_checkins (
 
 ALTER TABLE public.self_checkins ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users read own checkins, admins read all" ON public.self_checkins;
 CREATE POLICY "Users read own checkins, admins read all" ON public.self_checkins
   FOR SELECT TO authenticated
   USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "Users create own checkin in open weeks" ON public.self_checkins;
 CREATE POLICY "Users create own checkin in open weeks" ON public.self_checkins
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -157,6 +160,7 @@ CREATE POLICY "Users create own checkin in open weeks" ON public.self_checkins
     AND EXISTS (SELECT 1 FROM public.weeks w WHERE w.id = week_id AND w.status = 'open')
   );
 
+DROP POLICY IF EXISTS "Users update own checkin in open weeks" ON public.self_checkins;
 CREATE POLICY "Users update own checkin in open weeks" ON public.self_checkins
   FOR UPDATE TO authenticated
   USING (auth.uid() = user_id)
@@ -165,6 +169,7 @@ CREATE POLICY "Users update own checkin in open weeks" ON public.self_checkins
     AND EXISTS (SELECT 1 FROM public.weeks w WHERE w.id = week_id AND w.status = 'open')
   );
 
+DROP POLICY IF EXISTS "Users delete own checkin" ON public.self_checkins;
 CREATE POLICY "Users delete own checkin" ON public.self_checkins
   FOR DELETE TO authenticated
   USING (auth.uid() = user_id);
@@ -182,6 +187,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS set_checkin_person ON public.self_checkins;
 CREATE TRIGGER set_checkin_person
   BEFORE INSERT OR UPDATE ON public.self_checkins
   FOR EACH ROW EXECUTE FUNCTION public.set_checkin_person();

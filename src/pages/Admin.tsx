@@ -91,7 +91,7 @@ const Admin = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("votes")
-        .select("*, people:voted_person_id(name, photo_url, youtube_url)")
+        .select("*, people:voted_person_id(name, photo_url, song_url, youtube_url)")
         .eq("week_id", activeWeekId!);
       if (error) throw error;
       return data as any[];
@@ -102,7 +102,8 @@ const Admin = () => {
   const voteCounts = votes?.reduce((acc, v) => {
     const name = v.people?.name || "Unknown";
     const photoUrl = v.people?.photo_url;
-    const songUrl = v.people?.youtube_url;
+    // YouTube victory video wins; the legacy uploaded MP3 is the fallback
+    const songUrl = v.people?.youtube_url || v.people?.song_url;
     if (!acc[v.voted_person_id]) {
       acc[v.voted_person_id] = { name, photoUrl, songUrl, count: 0, reasons: [] };
     }

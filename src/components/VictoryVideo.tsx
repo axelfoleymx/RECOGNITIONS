@@ -52,7 +52,7 @@ const VictoryVideo = () => {
         </span>
         <div className="min-w-0">
           <p className="font-display text-sm font-bold tracking-wider">Mi video de victoria</p>
-          <p className="text-xs text-muted-foreground">Pega un link de YouTube: sonará en la presentación si ganas el Rocketer.</p>
+          <p className="text-xs text-muted-foreground">Pega un link de YouTube: sonará en la presentación si ganas el Rocketer. Si ya tenías canción subida y no pones video, se sigue usando tu canción.</p>
         </div>
       </div>
       <div className="flex flex-col sm:flex-row gap-2">
