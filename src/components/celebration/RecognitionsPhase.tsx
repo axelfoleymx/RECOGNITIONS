@@ -26,6 +26,17 @@ export type RecognitionGroup = {
 
 export const GROUPS_PER_SLIDE = 6;
 
+// Anonymous messages get a playful alias instead of a plain "Anónimo"
+const ANON_ALIASES = [
+  "👽 Un astronauta misterioso",
+  "🛸 Alguien desde otra galaxia",
+  "🌙 Un admirador secreto",
+  "☄️ Un cometa anónimo",
+  "🕶️ Agente encubierto",
+  "🪐 Alguien en órbita",
+];
+const anonAlias = (id: string) => ANON_ALIASES[[...id].reduce((t, c) => t + c.charCodeAt(0), 0) % ANON_ALIASES.length];
+
 /** Condenses N recognitions into one card per person (most recognized first). */
 export const groupRecognitions = (recs: CelebrationRecognition[]): RecognitionGroup[] => {
   const map = new Map<string, CelebrationRecognition[]>();
@@ -44,7 +55,7 @@ export const groupRecognitions = (recs: CelebrationRecognition[]): RecognitionGr
         count: list.length,
         pillars: [...new Set(list.map((r) => r.pillar).filter(Boolean) as string[])],
         quote: best.message.length > 160 ? best.message.slice(0, 157).trimEnd() + "…" : best.message,
-        author: best.is_anonymous ? "Anónimo" : best.profiles?.full_name || "Anónimo",
+        author: best.is_anonymous ? anonAlias(best.id) : best.profiles?.full_name || anonAlias(best.id),
       };
     })
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));

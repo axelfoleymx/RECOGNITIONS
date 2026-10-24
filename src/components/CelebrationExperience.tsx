@@ -1,24 +1,23 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Volume2, VolumeX } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import StarField from "@/components/StarField";
 import IntroPhase from "./celebration/IntroPhase";
 import RecognitionsPhase, { CelebrationRecognition, groupRecognitions, GROUPS_PER_SLIDE } from "./celebration/RecognitionsPhase";
 import MilestonesPhase from "./celebration/MilestonesPhase";
 import AwardsPhase from "./celebration/AwardsPhase";
-import SurveyPhase from "./celebration/SurveyPhase";
 import PulsePhase from "./celebration/PulsePhase";
 import { usePeople, useWeekAwards, useWeekAwardVotes, useWeekCheckins, useWeekMilestones } from "@/hooks/useGame";
-import { awardStandings, questionOf, SURVEY_QUESTIONS, surveyStandings, youtubeId } from "@/lib/gamification";
+import { categoryStandings, isAutoStatement, youtubeId } from "@/lib/gamification";
 import BirthdaysPhase, { BirthdayPerson } from "./celebration/BirthdaysPhase";
 import TopVotedPhase from "./celebration/TopVotedPhase";
 import SuspensePhase from "./celebration/SuspensePhase";
 import WinnerRevealPhase from "./celebration/WinnerRevealPhase";
 import ClosingPhase from "./celebration/ClosingPhase";
 
-type Phase = "intro" | "birthdays" | "pulse" | "milestones" | "survey" | "recognitions" | "awards" | "top" | "suspense" | "reveal" | "closing";
+type Phase = "intro" | "birthdays" | "pulse" | "milestones" | "awards" | "recognitions" | "top" | "suspense" | "reveal" | "closing";
 
 type Recognition = CelebrationRecognition;
 
@@ -41,7 +40,8 @@ interface CelebrationExperienceProps {
   winnerVideoUrl?: string | null;
 }
 
-const PHASES: Phase[] = ["intro", "birthdays", "pulse", "milestones", "survey", "recognitions", "awards", "top", "suspense", "reveal", "closing"];
+// One slide per award (its winner comes from the survey), then the free medals wall, then Rocketer
+const PHASES: Phase[] = ["intro", "birthdays", "pulse", "milestones", "awards", "recognitions", "top", "suspense", "reveal", "closing"];
 
 /** Returns birthdays matching the 7-day window starting from weekStartDate (Mon). */
 const filterBirthdaysForWeek = (
@@ -85,10 +85,10 @@ const CelebrationExperience = ({
   const [phase, setPhase] = useState<Phase>("intro");
   const winnerHasVideo = !!youtubeId(winnerVideoUrl);
   const winnerAudioUrl = !winnerHasVideo && winnerVideoUrl ? winnerVideoUrl : null;
-  // Survey answers are shown as one ranking per question; only written
-  // comments and extra medals go to the condensed wall (one card per person).
+  // Award answers become the award slides; only written comments and free
+  // medals go to the condensed wall (one card per person).
   const commentRecs = useMemo(
-    () => recognitions.filter((r) => !r.question_id || r.message !== questionOf(r.question_id)?.statement),
+    () => recognitions.filter((r) => !r.question_id || !isAutoStatement(r.message)),
     [recognitions],
   );
   const recGroups = useMemo(() => groupRecognitions(commentRecs), [commentRecs]);
@@ -101,16 +101,25 @@ const CelebrationExperience = ({
   const { data: awardVotes = [] } = useWeekAwardVotes(weekId);
   const { data: milestones = [] } = useWeekMilestones(weekId);
   const { data: checkins = [] } = useWeekCheckins(weekId);
-  const surveyResults = useMemo(
-    () => SURVEY_QUESTIONS.map((q) => surveyStandings(q.id, recognitions as any, checkins)),
-    [recognitions, checkins],
-  );
-  const surveyCount = recognitions.filter((r) => r.question_id).length;
-  const [surveyIndex, setSurveyIndex] = useState(0);
+  // Late recognitions must show up: refresh everything on open and every 15 s while presenting
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const refresh = () =>
+      ["recognitions", "votes", "award-votes", "milestones", "checkins", "week-awards"].forEach((k) =>
+        queryClient.invalidateQueries({ queryKey: [k] }),
+      );
+    refresh();
+    const t = setInterval(refresh, 15000);
+    return () => clearInterval(t);
+  }, [queryClient]);
   const peopleById = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
   const awardResults = useMemo(
-    () => categories.map((c) => ({ category: c, standings: awardStandings(c.id, awardVotes) })),
-    [categories, awardVotes],
+    () =>
+      categories.map((c) => ({
+        category: c,
+        standings: categoryStandings(c.id, recognitions as any, awardVotes, checkins),
+      })),
+    [categories, recognitions, awardVotes, checkins],
   );
   const [awardIndex, setAwardIndex] = useState(-1);
   const [topRevealIndex, setTopRevealIndex] = useState(-1);
@@ -118,7 +127,7 @@ const CelebrationExperience = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoverSide, setHoverSide] = useState<"left" | "right" | null>(null);
   const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(0.15);
+  const [volume, setVolume] = useState(0.08); // soft by default; some people prefer no music
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const drumrollRef = useRef<HTMLAudioElement | null>(null);
   const revealRef = useRef<HTMLAudioElement | null>(null);
@@ -178,7 +187,7 @@ const CelebrationExperience = ({
 
     // Determine which track each phase uses
     const trackFor = (p: Phase | null) => {
-      if (p === "pulse" || p === "milestones" || p === "survey" || p === "recognitions" || p === "awards" || p === "top") return "audio";
+      if (p === "pulse" || p === "milestones" || p === "recognitions" || p === "awards" || p === "top") return "audio";
       if (p === "suspense") return "drumroll";
       // The winner's YouTube video brings its own audio on the reveal slide
       if (p === "reveal") return winnerHasVideo ? null : "reveal";
@@ -267,16 +276,15 @@ const CelebrationExperience = ({
     (p: Phase) => {
       if (p === "recognitions" && recGroups.length === 0) return false;
       if (p === "milestones" && milestones.length === 0) return false;
-      if (p === "survey" && surveyCount === 0) return false;
       if (p === "pulse" && checkins.length === 0) return false;
-      if (p === "awards" && (awardResults.length === 0 || awardVotes.length === 0)) return false;
+      if (p === "awards" && !awardResults.some((r) => r.standings.length > 0)) return false;
       if (p === "birthdays" && birthdays.length === 0) return false;
       if (p === "top" && (!hasVotes || sortedVotes.length < 2)) return false;
       if (p === "suspense" && winners.length === 0) return false;
       if (p === "reveal" && winners.length === 0) return false;
       return true;
     },
-    [recGroups.length, milestones.length, surveyCount, checkins.length, awardResults.length, awardVotes.length, birthdays.length, hasVotes, sortedVotes.length, winners.length]
+    [recGroups.length, milestones.length, checkins.length, awardResults, birthdays.length, hasVotes, sortedVotes.length, winners.length]
   );
 
   const getNextPhase = useCallback(
@@ -308,12 +316,6 @@ const CelebrationExperience = ({
         return;
       }
     }
-    if (phase === "survey") {
-      if (surveyIndex < SURVEY_QUESTIONS.length - 1) {
-        setSurveyIndex((i) => i + 1);
-        return;
-      }
-    }
     if (phase === "awards") {
       if (awardIndex < awardResults.length - 1) {
         setAwardIndex((i) => i + 1);
@@ -336,23 +338,16 @@ const CelebrationExperience = ({
     if (next) {
       if (next === "recognitions") setRecIndex(0);
       if (next === "awards") setAwardIndex(-1);
-      if (next === "survey") setSurveyIndex(0);
       if (next === "birthdays") setBirthdayIndex(-1);
       if (next === "top") setTopRevealIndex(-1);
       setPhase(next);
     }
-  }, [phase, recIndex, recSlides, surveyIndex, awardIndex, awardResults.length, birthdayIndex, birthdays.length, topRevealIndex, topPositions.length, getNextPhase]);
+  }, [phase, recIndex, recSlides, awardIndex, awardResults.length, birthdayIndex, birthdays.length, topRevealIndex, topPositions.length, getNextPhase]);
 
   const goPrev = useCallback(() => {
     if (phase === "recognitions") {
       if (recIndex > 0) {
         setRecIndex((i) => i - 1);
-        return;
-      }
-    }
-    if (phase === "survey") {
-      if (surveyIndex > 0) {
-        setSurveyIndex((i) => i - 1);
         return;
       }
     }
@@ -378,12 +373,11 @@ const CelebrationExperience = ({
     if (prev) {
       if (prev === "recognitions") setRecIndex(Math.max(0, recSlides - 1));
       if (prev === "awards") setAwardIndex(awardResults.length - 1);
-      if (prev === "survey") setSurveyIndex(SURVEY_QUESTIONS.length - 1);
       if (prev === "birthdays") setBirthdayIndex(birthdays.length - 1);
       if (prev === "top") setTopRevealIndex(topPositions.length - 1);
       setPhase(prev);
     }
-  }, [phase, recIndex, surveyIndex, awardIndex, awardResults.length, birthdayIndex, birthdays.length, topRevealIndex, getPrevPhase, recSlides, topPositions.length]);
+  }, [phase, recIndex, awardIndex, awardResults.length, birthdayIndex, birthdays.length, topRevealIndex, getPrevPhase, recSlides, topPositions.length]);
 
   // Fullscreen
   useEffect(() => {
@@ -448,10 +442,11 @@ const CelebrationExperience = ({
 
       {/* Audio controls */}
       <div
-        className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full transition-opacity duration-300 hover:opacity-100 opacity-60"
+        className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full transition-opacity duration-300 hover:opacity-100 opacity-90"
         style={{ background: "hsl(var(--space-deep) / 0.7)" }}
         onClick={(e) => e.stopPropagation()}
       >
+        <span className="text-xs font-hud text-foreground/80 pl-1">Música</span>
         <input
           type="range"
           min={0}
@@ -478,6 +473,25 @@ const CelebrationExperience = ({
         </button>
       </div>
 
+      {/* Skip the current section (admin running the meeting) */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          const next = getNextPhase(phase);
+          if (!next) return;
+          if (next === "recognitions") setRecIndex(0);
+          if (next === "awards") setAwardIndex(-1);
+          if (next === "birthdays") setBirthdayIndex(-1);
+          if (next === "top") setTopRevealIndex(-1);
+          setPhase(next);
+        }}
+        className="absolute bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-2 rounded-full text-sm opacity-70 hover:opacity-100 transition-opacity"
+        style={{ background: "hsl(var(--space-deep) / 0.7)", color: "hsl(var(--foreground))" }}
+        aria-label="Saltar a la siguiente sección"
+      >
+        <SkipForward className="h-4 w-4" /> Saltar sección
+      </button>
+
       <div
         className="absolute left-4 top-1/2 -translate-y-1/2 z-50 transition-opacity duration-300 pointer-events-none"
         style={{ opacity: hoverSide === "left" ? 0.3 : 0 }}
@@ -498,10 +512,6 @@ const CelebrationExperience = ({
           )}
 
           {phase === "pulse" && <PulsePhase key="pulse" checkins={checkins} />}
-
-          {phase === "survey" && (
-            <SurveyPhase key={`survey-${surveyIndex}`} index={surveyIndex} standings={surveyResults[surveyIndex]} peopleById={peopleById} />
-          )}
 
           {phase === "milestones" && (
             <MilestonesPhase key="milestones" milestones={milestones} peopleById={peopleById} />

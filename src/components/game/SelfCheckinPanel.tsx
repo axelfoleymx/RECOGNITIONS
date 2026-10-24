@@ -17,7 +17,7 @@ import {
   SelfCheckin,
   SpeedId,
   SPEEDS,
-  SURVEY_QUESTIONS,
+  SurveyQuestion,
   XP,
 } from "@/lib/gamification";
 import GameButton from "./GameButton";
@@ -32,6 +32,8 @@ interface SelfCheckinPanelProps {
   locked?: boolean;
   onSave: (c: CheckinInput) => Promise<void>;
   onGoMilestones?: () => void;
+  /** the week's awards, so people rate themselves on the same things (worth ½) */
+  questions: SurveyQuestion[];
 }
 
 /** Semicircle speed gauge; needle angle −60 (slow) … +60 (max). */
@@ -76,7 +78,7 @@ const Speedometer = ({ speed }: { speed: SpeedId | null }) => {
   );
 };
 
-const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked, onSave, onGoMilestones }: SelfCheckinPanelProps) => {
+const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked, onSave, onGoMilestones, questions }: SelfCheckinPanelProps) => {
   const [mood, setMood] = useState<number | null>(initial?.mood ?? null);
   const [wantsSupport, setWantsSupport] = useState<boolean>(initial?.wants_support ?? false);
   const [speed, setSpeed] = useState<SpeedId | null>(initial?.speed ?? null);
@@ -272,12 +274,12 @@ const SelfCheckinPanel = ({ milestones, peopleById, myPersonId, initial, locked,
 
       {/* Self ratings */}
       <div className="cockpit p-5 md:p-7">
-        <p className="hud-label text-neon mb-1">5 · Califícate en las 5 preguntas</p>
+        <p className="hud-label text-neon mb-1">5 · ¿Te ganaste algún premio de la semana?</p>
         <p className="text-xs text-muted-foreground mb-4">
           Tu autoevaluación vale <strong className="text-primary">½</strong> frente a un voto externo ({SELF_WEIGHT} × 🚀). Déjala vacía si no aplica.
         </p>
         <div className="space-y-2">
-          {SURVEY_QUESTIONS.map((q) => (
+          {questions.map((q) => (
             <div key={q.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/20 border border-border/50 px-3 py-2">
               <span className="text-sm">
                 {q.emoji} {q.self}

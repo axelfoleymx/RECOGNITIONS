@@ -122,3 +122,22 @@ Migración: `supabase/migrations/20261016100000_gamification_v2.sql` (aplicar de
 - Meta sugerida: índice de clima ≥ +30 y que nadie que pidió apoyo pase la semana sin seguimiento.
 
 Migración: `supabase/migrations/20261019000000_mood_pulse.sql`.
+
+---
+
+## v4 — Fase 1 de la retroalimentación del equipo (23 oct 2026)
+
+Respuesta al tablero "Qué me gustaba / No me gustaba / Del nuevo me gusta / me da miedo / no me gusta / Ideas nuevas".
+
+- **Una sola encuesta (antes Premios + Recognitions):** cada pregunta es un premio de la semana; quien junte más 🚀 en esa pregunta gana ese premio. Pasa de 10 respuestas a 5, sin repetir nombres entre categorías. Ganador **por categoría**, más el Rocketer como MVP.
+- **La Nave tiene 3 sistemas para despegar** (Recognitions y premios, Rocketer, Autoevaluación) e **Hitos como bonus**.
+- **Sin bloqueos al reconocer:** se quitan el "máximo 2 premios por persona" y el "máximo 3 con 🚀🚀🚀". **Medallas libres ilimitadas** al final de la encuesta.
+- **Rocketer:** solo descansa quien ganó la semana pasada (antes 3 semanas). Migración `20261023000000_rocketer_rest.sql`.
+- **Agregar integrantes:** botón "+ Agregar integrante" en cada pregunta; aparece al instante con etiqueta "Nuevo" (como en la versión anterior). Las personas pendientes de aprobar también se pueden reconocer.
+- **Anónimos divertidos:** interruptor visible desde el inicio; en la presentación salen con alias ("👽 Un astronauta misterioso").
+- **Tutorial** de 4 pantallas la primera vez y botón "?" para volver a verlo.
+- **Presentación:** un slide por premio con su ganador; recarga en vivo cada 15 s (ya no se pierden los de último momento); música más baja con control visible; botón "Saltar sección".
+- **Autoevaluación:** cada quien se califica en los mismos premios de la semana (vale ½).
+- **Celular:** la pregunta aparece arriba; ya no se duplican las fotos; "Aún sin recognition" en tono amable y solo cuando ayuda; nombres repetidos distinguibles; aviso del Rocketer compacto.
+
+Pendiente (Fase 2 y 3): rachas, logros por ganar premios, rankeds por temporada, tienda de XP con premios reales, Pixelio ahorcable y rincón de mascotas.

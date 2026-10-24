@@ -68,10 +68,12 @@ const RocketShip = ({ fuel, launching }: { fuel: number; launching: boolean }) =
 );
 
 const LaunchPanel = ({ systems, playerName, weekLabel, weekKey, endDate, onGo }: LaunchPanelProps) => {
-  const done = systems.filter((s) => s.progress >= s.goal).length;
-  const fuel = done / systems.length;
-  const allDone = done === systems.length;
-  const next = systems.find((s) => s.progress < s.goal);
+  // Bonus systems (optional) add XP but are not needed to launch
+  const core = systems.filter((s) => !s.optional);
+  const done = core.filter((s) => s.progress >= s.goal).length;
+  const fuel = core.length ? done / core.length : 0;
+  const allDone = done === core.length;
+  const next = core.find((s) => s.progress < s.goal) ?? systems.find((s) => s.progress < s.goal);
   const storageKey = `launched-${weekKey}`;
   const [launched, setLaunched] = useState(false);
   const [launching, setLaunching] = useState(false);
@@ -119,7 +121,7 @@ const LaunchPanel = ({ systems, playerName, weekLabel, weekKey, endDate, onGo }:
           <div className="rounded-xl border border-xp/40 bg-xp/10 px-3 py-1.5 text-center">
             <p className="hud-label text-[9px] text-xp">Sistemas</p>
             <p className="font-display text-lg text-xp leading-none">
-              {done}/{systems.length}
+              {done}/{core.length}
             </p>
           </div>
         </div>
@@ -152,6 +154,7 @@ const LaunchPanel = ({ systems, playerName, weekLabel, weekKey, endDate, onGo }:
                     <span className={cn("status-light shrink-0", ok ? "status-done" : partial ? "status-partial" : "status-pending")} />
                     <span className="font-display text-sm md:text-lg font-black tracking-wider uppercase">{s.title}</span>
                     {isNext && <span className="chip bg-primary text-primary-foreground text-[10px] px-2 py-0.5 ml-1">SIGUIENTE</span>}
+                    {s.optional && !ok && <span className="chip bg-muted text-muted-foreground text-[10px] px-2 py-0.5 ml-1">BONUS</span>}
                   </div>
                   <p className="text-xs md:text-sm mt-0.5 text-muted-foreground">
                     {ok ? "Sistema en línea" : s.subtitle}

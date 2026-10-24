@@ -28,15 +28,18 @@ const VoteReminderBanner = ({ variant = "sticky", className = "" }: Props) => {
         <AlertTriangle className="h-5 w-5 text-destructive" />
       </motion.span>
       <p className="text-sm text-destructive font-medium text-left flex-1">
-        Aún no votas por tu <strong>Rocketer de la semana</strong> — tu voto cuenta y
-        define al ganador 🚀
+        {/* compact on phones so it doesn't push the page content down */}
+        <span className="sm:hidden">Te falta votar al <strong>Rocketer</strong></span>
+        <span className="hidden sm:inline">
+          Aún no votas por tu <strong>Rocketer de la semana</strong> — tu voto cuenta y define al ganador 🚀
+        </span>
       </p>
       <Button
         size="sm"
         onClick={() => navigate("/vote")}
         className="btn-space shrink-0 gap-1"
       >
-        <Star className="h-4 w-4" /> Votar ahora
+        <Star className="h-4 w-4" /> <span className="hidden sm:inline">Votar ahora</span><span className="sm:hidden">Votar</span>
       </Button>
     </div>
   );
@@ -57,7 +60,7 @@ const VoteReminderBanner = ({ variant = "sticky", className = "" }: Props) => {
           <div
             className={
               variant === "sticky"
-                ? "mx-auto max-w-5xl px-4 py-2.5"
+                ? "mx-auto max-w-5xl px-4 py-1.5 sm:py-2.5"
                 : ""
             }
           >

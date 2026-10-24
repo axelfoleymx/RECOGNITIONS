@@ -1,5 +1,5 @@
-import { usePeople, useWeekCheckins, useWeekMilestones } from "@/hooks/useGame";
-import { moodOf, SpeedId, SPEEDS, SURVEY_QUESTIONS } from "@/lib/gamification";
+import { usePeople, useWeekAwards, useWeekCheckins, useWeekMilestones } from "@/hooks/useGame";
+import { moodOf, questionsFromCategories, SpeedId, SPEEDS } from "@/lib/gamification";
 import PlayerAvatar from "./PlayerAvatar";
 import ClimateMeter from "./ClimateMeter";
 
@@ -10,6 +10,8 @@ const CheckinsAdmin = ({ weekId }: { weekId: string }) => {
   const { data: checkins = [] } = useWeekCheckins(weekId);
   const { data: people = [] } = usePeople();
   const { data: milestones = [] } = useWeekMilestones(weekId);
+  const { data: categories = [] } = useWeekAwards(weekId, { ensure: false });
+  const questions = questionsFromCategories(categories);
   const byId = Object.fromEntries(people.map((p) => [p.id, p]));
   const msById = Object.fromEntries(milestones.map((m) => [m.id, m]));
   const pending = people.filter((p) => p.user_id && p.approved !== false && !checkins.some((c) => c.person_id === p.id));
@@ -101,7 +103,7 @@ const CheckinsAdmin = ({ weekId }: { weekId: string }) => {
               {Object.keys(c.ratings || {}).length > 0 && (
                 <p className="text-xs text-muted-foreground">
                   Auto (vale ½):{" "}
-                  {SURVEY_QUESTIONS.filter((q) => c.ratings[q.id]).map((q) => `${q.emoji}${"🚀".repeat(c.ratings[q.id])}`).join("  ")}
+                  {questions.filter((q) => c.ratings[q.id]).map((q) => `${q.emoji}${"🚀".repeat(c.ratings[q.id])}`).join("  ")}
                 </p>
               )}
             </div>

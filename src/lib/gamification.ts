@@ -105,26 +105,13 @@ export const pillarOf = (id: string | null | undefined) =>
 
 // ------------------------------------------------------ survey questions
 
+// Fallback questions when the week has no awards configured. Order matters:
+// open with the human questions (help, attitude) to set an empathetic tone.
 export const SURVEY_QUESTIONS = [
-  {
-    id: "a-tiempo",
-    emoji: "⏱️",
-    pillar: "productividad",
-    question: "¿Quién entregó todo a tiempo esta semana?",
-    statement: "Entregó todo a tiempo esta semana",
-    self: "¿Entregaste todo a tiempo?",
-  },
-  {
-    id: "cliente",
-    emoji: "💬",
-    pillar: "cliente",
-    question: "¿Quién brilló con el cliente?",
-    statement: "Brilló en la atención al cliente",
-    self: "¿Cómo fue tu atención al cliente?",
-  },
   {
     id: "ayuda",
     emoji: "🤝",
+    short: "Ayuda",
     pillar: "colaboracion",
     question: "¿Quién te ayudó o te salvó el día?",
     statement: "Ayudó al equipo y salvó el día",
@@ -133,14 +120,34 @@ export const SURVEY_QUESTIONS = [
   {
     id: "actitud",
     emoji: "🌞",
+    short: "Actitud",
     pillar: "actitud",
     question: "¿Quién contagió buena actitud?",
     statement: "Contagió buena actitud al equipo",
     self: "¿Cómo estuvo tu actitud?",
   },
   {
+    id: "cliente",
+    emoji: "💬",
+    short: "Cliente",
+    pillar: "cliente",
+    question: "¿Quién brilló con el cliente?",
+    statement: "Brilló en la atención al cliente",
+    self: "¿Cómo fue tu atención al cliente?",
+  },
+  {
+    id: "a-tiempo",
+    emoji: "⏱️",
+    short: "A tiempo",
+    pillar: "productividad",
+    question: "¿Quién entregó todo a tiempo esta semana?",
+    statement: "Entregó todo a tiempo esta semana",
+    self: "¿Entregaste todo a tiempo?",
+  },
+  {
     id: "iniciativa",
     emoji: "🚀",
+    short: "Iniciativa",
     pillar: "emprendedor",
     question: "¿Quién propuso o resolvió algo sin que se lo pidieran?",
     statement: "Tomó la iniciativa sin que se lo pidieran",
@@ -149,9 +156,6 @@ export const SURVEY_QUESTIONS = [
 ] as const;
 
 export const questionOf = (id: string | null | undefined) => SURVEY_QUESTIONS.find((q) => q.id === id);
-
-/** Max people that can receive the top 3-rocket rating per question (avoids inflation). */
-export const MAX_TOP_RATINGS = 3;
 
 export const RATING_LABELS = ["", "Bien", "Muy bien", "¡Épico!"];
 
@@ -235,7 +239,7 @@ export const milestoneKind = (id: string) => MILESTONE_KINDS[id] || { label: id,
 // ------------------------------------------------------------------- XP
 
 export const XP = {
-  completeSurvey: 25,
+  completeSurvey: 40,
   giveRecognition: 10, // extra / open recognition with medal
   castAwardVote: 5,
   castRocketerVote: 10,
@@ -332,7 +336,7 @@ export const ACHIEVEMENTS: {
 // -------------------------------------------------------- launch systems
 
 export type LaunchSystem = {
-  id: "awards" | "recognitions" | "rocketer" | "milestones" | "checkin";
+  id: "recognitions" | "rocketer" | "milestones" | "checkin";
   emoji: string;
   title: string;
   subtitle: string;
@@ -340,94 +344,123 @@ export type LaunchSystem = {
   goal: number;
   xp: number;
   to: string;
+  /** bonus system: adds XP but is not needed to launch */
+  optional?: boolean;
 };
 
 export const launchSystems = (w: {
-  awardVotes: number;
-  awardsActive: number;
   surveyAnswered: number;
+  categoriesCount: number;
   votedRocketer: boolean;
   milestonesTouched: number;
   checkinDone: boolean;
-}): LaunchSystem[] => {
-  const awards = w.awardsActive || 5;
-  return [
-    { id: "awards", emoji: "🏆", title: "Premios", subtitle: `Vota ${awards} premios`, progress: Math.min(w.awardVotes, awards), goal: awards, xp: awards * XP.castAwardVote, to: "/awards" },
-    { id: "recognitions", emoji: "🏅", title: "Recognitions", subtitle: "Encuesta de 5 preguntas", progress: w.surveyAnswered > 0 ? 1 : 0, goal: 1, xp: XP.completeSurvey, to: "/recognize" },
-    { id: "rocketer", emoji: "🚀", title: "Rocketer", subtitle: "Elige al MVP", progress: w.votedRocketer ? 1 : 0, goal: 1, xp: XP.castRocketerVote, to: "/vote" },
-    { id: "milestones", emoji: "🏁", title: "Hitos", subtitle: "Registra o súmate", progress: Math.min(1, w.milestonesTouched), goal: 1, xp: XP.createMilestone, to: "/milestones" },
-    { id: "checkin", emoji: "🪞", title: "Autoevaluación", subtitle: "¿Cómo te sentiste esta semana?", progress: w.checkinDone ? 1 : 0, goal: 1, xp: XP.selfCheckin, to: "/checkin" },
-  ];
+}): LaunchSystem[] => [
+  {
+    id: "recognitions",
+    emoji: "🏅",
+    title: "Recognitions y premios",
+    subtitle: `Una encuesta con los ${w.categoriesCount || 5} premios de la semana`,
+    progress: w.surveyAnswered > 0 ? 1 : 0,
+    goal: 1,
+    xp: XP.completeSurvey,
+    to: "/recognize",
+  },
+  { id: "rocketer", emoji: "🚀", title: "Rocketer", subtitle: "Elige al MVP de la semana", progress: w.votedRocketer ? 1 : 0, goal: 1, xp: XP.castRocketerVote, to: "/vote" },
+  { id: "checkin", emoji: "🪞", title: "Autoevaluación", subtitle: "¿Cómo te sentiste esta semana?", progress: w.checkinDone ? 1 : 0, goal: 1, xp: XP.selfCheckin, to: "/checkin" },
+  { id: "milestones", emoji: "🏁", title: "Hitos", subtitle: "Bonus: registra o súmate a un logro", progress: Math.min(1, w.milestonesTouched), goal: 1, xp: XP.createMilestone, to: "/milestones", optional: true },
+];
+
+// -------------------------------------------- survey = the week's awards
+
+export type SurveyQuestion = {
+  id: string;
+  emoji: string;
+  short: string;
+  pillar: string;
+  question: string;
+  description: string;
+  statement: string;
+  self: string;
 };
+
+/** The survey asks one question per award of the week; its winner takes that award. */
+const PILLAR_ORDER = ["colaboracion", "actitud", "cliente", "productividad", "resultados", "creatividad", "emprendedor", "crecimiento"];
+const pillarRank = (p: string) => (PILLAR_ORDER.indexOf(p) === -1 ? PILLAR_ORDER.length : PILLAR_ORDER.indexOf(p));
+
+export const questionsFromCategories = (categories: AwardCategory[]): SurveyQuestion[] =>
+  categories.length
+    ? [...categories]
+        // human questions first (help, attitude) for an empathetic tone; the team's extra award goes last
+        .sort((a, b) => Number(!!a.is_custom) - Number(!!b.is_custom) || pillarRank(a.pillar) - pillarRank(b.pillar))
+        .map((c) => ({
+        id: c.id,
+        emoji: c.emoji,
+        short: c.name.length > 14 ? c.name.split(/\s+/).slice(-1)[0] : c.name,
+        pillar: c.pillar,
+        question: `¿Quién se gana "${c.name}"?`,
+        description: c.description,
+        statement: `Destacó en "${c.name}"`,
+        self: `¿Te ganaste "${c.name}"?`,
+      }))
+    : SURVEY_QUESTIONS.map((q) => ({ ...q, description: "" }));
+
+/** True when a recognition row only carries the automatic text (no written comment). */
+export const isAutoStatement = (message: string | null | undefined) =>
+  !message || message.startsWith("Destacó en \"") || SURVEY_QUESTIONS.some((q) => q.statement === message);
 
 // --------------------------------------------------------- award scoring
 
 export type AwardStanding = { personId: string; rockets: number; votes: number; selfRockets: number; reasons: string[] };
 
-/** Points = external rockets + self rockets × ½. */
-export const awardStandings = (categoryId: string, votes: AwardVote[]): AwardStanding[] => {
+/**
+ * Standings for one award: survey answers (1–3 🚀 each) + self rating × ½ from
+ * the self-evaluation + any legacy drag-and-drop award votes cast this week.
+ */
+export const categoryStandings = (
+  categoryId: string,
+  recs: WeekRecognition[],
+  awardVotes: AwardVote[] = [],
+  checkins: Pick<SelfCheckin, "person_id" | "ratings">[] = [],
+): AwardStanding[] => {
   const map = new Map<string, AwardStanding>();
-  for (const v of votes) {
-    if (v.category_id !== categoryId) continue;
-    const s = map.get(v.nominee_person_id) || { personId: v.nominee_person_id, rockets: 0, votes: 0, selfRockets: 0, reasons: [] };
+  const get = (id: string) => map.get(id) || { personId: id, rockets: 0, votes: 0, selfRockets: 0, reasons: [] };
+  recs.forEach((r) => {
+    if (r.question_id !== categoryId) return;
+    const s = get(r.recognized_person_id);
+    s.rockets += r.rating || 1;
+    s.votes += 1;
+    if (!isAutoStatement(r.message) && !r.is_anonymous) s.reasons.push(r.message);
+    map.set(r.recognized_person_id, s);
+  });
+  awardVotes.forEach((v) => {
+    if (v.category_id !== categoryId) return;
+    const s = get(v.nominee_person_id);
     const w = v.is_self ? SELF_WEIGHT : 1;
     s.rockets += v.rockets * w;
     if (v.is_self) s.selfRockets += v.rockets * w;
     else s.votes += 1;
     if (v.reason?.trim() && !v.is_self) s.reasons.push(v.reason.trim());
     map.set(v.nominee_person_id, s);
-  }
-  return [...map.values()].sort((a, b) => b.rockets - a.rockets || b.votes - a.votes);
+  });
+  checkins.forEach((c) => {
+    const rating = c.ratings?.[categoryId];
+    if (!c.person_id || !rating) return;
+    const s = get(c.person_id);
+    s.rockets += rating * SELF_WEIGHT;
+    s.selfRockets += rating * SELF_WEIGHT;
+    map.set(c.person_id, s);
+  });
+  return [...map.values()].filter((s) => s.votes > 0 || s.selfRockets > 0).sort((a, b) => b.rockets - a.rockets || b.votes - a.votes);
 };
 
-export const awardWinners = (categoryId: string, votes: AwardVote[]) => {
-  const s = awardStandings(categoryId, votes);
+/** Legacy helper kept for the old award votes (all-time stats). */
+export const awardStandings = (categoryId: string, votes: AwardVote[]) => categoryStandings(categoryId, [], votes);
+
+export const awardWinners = (categoryId: string, votes: AwardVote[], recs: WeekRecognition[] = []) => {
+  const s = categoryStandings(categoryId, recs, votes);
   if (!s.length) return [];
   const top = s[0];
   return s.filter((x) => x.rockets === top.rockets && x.votes === top.votes);
-};
-
-/** Max awards a single voter may give to the same nominee in one week. */
-export const MAX_AWARDS_PER_NOMINEE = 2;
-/** Self-nominations allowed per week (each worth ½). */
-export const MAX_SELF_NOMINATIONS = 1;
-
-// -------------------------------------------------------- survey scoring
-
-export type SurveyStanding = {
-  personId: string;
-  points: number;
-  votes: number;
-  selfPoints: number;
-  comments: string[];
-};
-
-/** Ranking for one survey question: external ratings + self rating × ½. */
-export const surveyStandings = (
-  questionId: string,
-  recs: WeekRecognition[],
-  checkins: Pick<SelfCheckin, "person_id" | "ratings">[] = [],
-): SurveyStanding[] => {
-  const q = questionOf(questionId);
-  const map = new Map<string, SurveyStanding>();
-  const get = (id: string) => map.get(id) || { personId: id, points: 0, votes: 0, selfPoints: 0, comments: [] };
-  recs.forEach((r) => {
-    if (r.question_id !== questionId) return;
-    const s = get(r.recognized_person_id);
-    s.points += r.rating || 1;
-    s.votes += 1;
-    if (r.message && r.message !== q?.statement && !r.is_anonymous) s.comments.push(r.message);
-    map.set(r.recognized_person_id, s);
-  });
-  checkins.forEach((c) => {
-    const rating = c.ratings?.[questionId];
-    if (!c.person_id || !rating) return;
-    const s = get(c.person_id);
-    s.points += rating * SELF_WEIGHT;
-    s.selfPoints += rating * SELF_WEIGHT;
-    map.set(c.person_id, s);
-  });
-  return [...map.values()].filter((s) => s.votes > 0 || s.selfPoints > 0).sort((a, b) => b.points - a.points || b.votes - a.votes);
 };
 
 // ------------------------------------------------------------- helpers
@@ -442,6 +475,13 @@ export const initials = (name: string) =>
     .toUpperCase() || "?";
 
 export const firstName = (name: string) => name.split(/\s+/)[0] || name;
+
+/** Short display names: first name, unless two people share it (then the full name). */
+export const shortNames = (people: { id: string; name: string }[]) => {
+  const count: Record<string, number> = {};
+  people.forEach((p) => (count[firstName(p.name)] = (count[firstName(p.name)] || 0) + 1));
+  return Object.fromEntries(people.map((p) => [p.id, count[firstName(p.name)] > 1 ? p.name : firstName(p.name)]));
+};
 
 /** Time remaining until Friday 23:59 of the given week end date (YYYY-MM-DD). */
 export const timeLeft = (endDate: string, now = new Date()) => {
@@ -475,7 +515,7 @@ export const buildWeekSummary = (input: {
   const mine = recognitions.filter((r) => r.author_user_id && r.author_user_id === userId);
   const surveyAnswered = new Set(mine.map((r) => r.question_id).filter(Boolean)).size;
 
-  const myAwardVotes = awardVotes.filter((v) => v.voter_user_id === userId).length;
+  const myAwardVotes = mine.filter((r) => r.question_id).length + awardVotes.filter((v) => v.voter_user_id === userId).length;
   const milestonesTouched = milestones.filter(
     (m) => m.created_by === userId || (input.myPersonId && m.participants.includes(input.myPersonId)),
   ).length;
@@ -519,8 +559,7 @@ export const buildWeekSummary = (input: {
     topGivers,
     myAwardVotes,
     systems: launchSystems({
-      awardVotes: myAwardVotes,
-      awardsActive: input.categoriesCount,
+      categoriesCount: input.categoriesCount,
       surveyAnswered,
       votedRocketer: input.votedRocketer,
       milestonesTouched,

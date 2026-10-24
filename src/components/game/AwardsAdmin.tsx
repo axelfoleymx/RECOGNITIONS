@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { usePeople, useWeekAwards, useWeekAwardVotes } from "@/hooks/useGame";
-import { AwardCategory, awardStandings, pillarOf } from "@/lib/gamification";
+import { usePeople, useWeekAwards, useWeekAwardVotes, useWeekCheckins, useWeekRecognitions } from "@/hooks/useGame";
+import { AwardCategory, categoryStandings, pillarOf } from "@/lib/gamification";
 import { cn } from "@/lib/utils";
 import PlayerAvatar from "./PlayerAvatar";
 
@@ -12,6 +12,8 @@ const AwardsAdmin = ({ weekId }: { weekId: string }) => {
   const queryClient = useQueryClient();
   const { data: active = [] } = useWeekAwards(weekId, { ensure: false });
   const { data: votes = [] } = useWeekAwardVotes(weekId);
+  const { data: recs = [] } = useWeekRecognitions(weekId);
+  const { data: checkins = [] } = useWeekCheckins(weekId);
   const { data: people = [] } = usePeople();
   const peopleById = Object.fromEntries(people.map((p) => [p.id, p]));
 
@@ -28,7 +30,7 @@ const AwardsAdmin = ({ weekId }: { weekId: string }) => {
 
   const toggle = async (c: AwardCategory) => {
     const isOn = activeIds.has(c.id);
-    if (isOn && votes.some((v) => v.category_id === c.id) && !confirm("Este premio ya tiene votos. ¿Quitarlo de la semana? (los votos se conservan)")) return;
+    if (isOn && (votes.some((v) => v.category_id === c.id) || recs.some((r) => r.question_id === c.id)) && !confirm("Este premio ya tiene votos. ¿Quitarlo de la semana? (los votos se conservan)")) return;
     const { error } = isOn
       ? await supabase.from("week_awards").delete().eq("week_id", weekId).eq("category_id", c.id)
       : await supabase.from("week_awards").insert({ week_id: weekId, category_id: c.id, position: active.length + 1 });
@@ -91,7 +93,7 @@ const AwardsAdmin = ({ weekId }: { weekId: string }) => {
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {active.map((c) => {
-          const standings = awardStandings(c.id, votes);
+          const standings = categoryStandings(c.id, recs, votes, checkins);
           return (
             <div key={c.id} className="glass-card p-4">
               <p className="font-display text-sm text-gold-gradient mb-3">

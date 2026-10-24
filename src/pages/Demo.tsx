@@ -7,14 +7,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import UpcomingBirthdays from "@/components/UpcomingBirthdays";
 import GameShell from "@/components/game/GameShell";
 import HomeHud from "@/components/game/HomeHud";
-import AwardsArena from "@/components/game/AwardsArena";
+import AwardsShowcase from "@/components/game/AwardsShowcase";
 import RecognitionSurvey from "@/components/game/RecognitionSurvey";
 import RocketerArena from "@/components/game/RocketerArena";
 import MilestonesBoard from "@/components/game/MilestonesBoard";
 import SelfCheckinPanel from "@/components/game/SelfCheckinPanel";
 import AwardsPhase from "@/components/celebration/AwardsPhase";
 import MilestonesPhase from "@/components/celebration/MilestonesPhase";
-import SurveyPhase from "@/components/celebration/SurveyPhase";
 import PulsePhase from "@/components/celebration/PulsePhase";
 import WinnerRevealPhase from "@/components/celebration/WinnerRevealPhase";
 import RecognitionsPhase, { groupRecognitions } from "@/components/celebration/RecognitionsPhase";
@@ -23,14 +22,13 @@ import { AwardsHeader } from "./Awards";
 import {
   AwardCategory,
   AwardVote,
-  awardStandings,
+  categoryStandings,
+  isAutoStatement,
   buildWeekSummary,
   GamePerson,
   Milestone,
-  questionOf,
+  questionsFromCategories,
   SelfCheckin,
-  SURVEY_QUESTIONS,
-  surveyStandings,
   WeekRecognition,
   xpFor,
 } from "@/lib/gamification";
@@ -52,28 +50,11 @@ const BASE_CATEGORIES: AwardCategory[] = [
   { id: "c5", slug: "emprendedor", name: "Iniciativa Emprendedora", description: "Propone y ejecuta sin que se lo pidan.", emoji: "🚀", pillar: "emprendedor" },
 ];
 
-const seedVotes = (): AwardVote[] => {
-  const v: AwardVote[] = [];
-  let n = 0;
-  for (let voter = 1; voter < 12; voter++) {
-    BASE_CATEGORIES.forEach((c, ci) => {
-      if ((voter + ci) % 3 === 0) return;
-      const nominee = (voter * 3 + ci * 5) % PEOPLE.length || 1;
-      if (nominee === voter) return;
-      v.push({
-        id: `v${n++}`, week_id: "w", category_id: c.id, voter_user_id: `user-${voter}`, nominee_person_id: `p${nominee}`,
-        rockets: ((voter + ci) % 3) + 1, reason: ci === 1 ? "Entregó el reporte mensual antes del deadline y sin errores." : "",
-      });
-    });
-  }
-  return v;
-};
-
 const seedRecs = (): WeekRecognition[] => {
   const out: WeekRecognition[] = [];
   let n = 0;
   for (let author = 2; author < 10; author++) {
-    SURVEY_QUESTIONS.forEach((q, qi) => {
+    questionsFromCategories(BASE_CATEGORIES).forEach((q, qi) => {
       [1, 2, 5, 7].forEach((pi, k) => {
         if ((author + qi + k) % 3 === 0 || pi === author) return;
         out.push({
@@ -157,7 +138,7 @@ const Demo = () => {
     queryClient.setQueryDefaults(["birthdays-widget"], { staleTime: Infinity });
     queryClient.setQueryData(["birthdays-widget"], DEMO_BIRTHDAYS);
   });
-  const [votes, setVotes] = useState<AwardVote[]>(seedVotes);
+  const [votes] = useState<AwardVote[]>([]);
   const [categories, setCategories] = useState(BASE_CATEGORIES);
   const [recs, setRecs] = useState<WeekRecognition[]>(seedRecs);
   const [milestones, setMilestones] = useState(MILESTONES);
@@ -167,7 +148,8 @@ const Demo = () => {
 
   const peopleById = Object.fromEntries(PEOPLE.map((p) => [p.id, p]));
   const myVotes = votes.filter((v) => v.voter_user_id === ME);
-  const voteTotals = votes.reduce<Record<string, number>>((t, v) => ((t[v.category_id] = (t[v.category_id] || 0) + 1), t), {});
+  const voteTotals = recs.reduce<Record<string, number>>((t, r) => (r.question_id ? ((t[r.question_id] = (t[r.question_id] || 0) + 1), t) : t), {});
+  const questions = questionsFromCategories(categories);
   const surveyDone = recs.some((r) => r.author_user_id === ME && r.question_id);
   const summary = useMemo(
     () =>
@@ -187,14 +169,14 @@ const Demo = () => {
   const radarIds = new Set(summary.radar.map((p) => p.id));
 
   if (tab === "Presentación") {
-    const awardResults = categories.map((c) => ({ category: c, standings: awardStandings(c.id, votes) }));
-    const commentRecs = recs.filter((r) => !r.question_id || r.message !== questionOf(r.question_id)?.statement);
+    const awardResults = categories.map((c) => ({ category: c, standings: categoryStandings(c.id, recs, votes, allCheckins) }));
+    const commentRecs = recs.filter((r) => !r.question_id || !isAutoStatement(r.message));
     const groups = groupRecognitions(
       commentRecs.map((r) => ({ ...r, people: { name: peopleById[r.recognized_person_id].name, photo_url: null }, profiles: { full_name: "Equipo" } })),
     );
-    const phases = ["pulse", "milestones", "survey", "recognitions", "awards", "reveal"] as const;
+    const phases = ["pulse", "milestones", "awards", "recognitions", "reveal"] as const;
     const phase = phases[slide.phase];
-    const last = phase === "survey" ? SURVEY_QUESTIONS.length - 1 : phase === "awards" ? awardResults.length - 1 : 0;
+    const last = phase === "awards" ? awardResults.length - 1 : 0;
     return (
       <div
         className="fixed inset-0 overflow-hidden"
@@ -210,9 +192,6 @@ const Demo = () => {
         <div className="relative z-10 h-full">
           {phase === "pulse" && <PulsePhase checkins={allCheckins} />}
           {phase === "milestones" && <MilestonesPhase milestones={milestones} peopleById={peopleById} />}
-          {phase === "survey" && (
-            <SurveyPhase key={slide.index} index={slide.index} standings={surveyStandings(SURVEY_QUESTIONS[slide.index].id, recs, allCheckins)} peopleById={peopleById} />
-          )}
           {phase === "recognitions" && <RecognitionsPhase groups={groups} totalRecognitions={commentRecs.length} slide={0} />}
           {phase === "awards" && <AwardsPhase key={slide.index} results={awardResults} index={slide.index} peopleById={peopleById} />}
           {phase === "reveal" && (
@@ -257,33 +236,30 @@ const Demo = () => {
       {tab === "Premios" && (
         <>
           <AwardsHeader endDate={demoWeek.end} />
-          <AwardsArena
-            people={PEOPLE} categories={categories} myVotes={myVotes} voteTotals={voteTotals} myUserId={ME}
+          <AwardsShowcase
+            categories={categories}
+            mentions={voteTotals}
+            surveyDone={surveyDone}
             canPropose={!categories.some((c) => c.is_custom)}
             onPropose={async (a) => setCategories((cur) => [...cur, { id: "custom", slug: "custom", is_custom: true, ...a }])}
-            onCast={async (v) =>
-              setVotes((cur) => [
-                ...cur.filter((x) => !(x.voter_user_id === ME && x.category_id === v.categoryId)),
-                { id: crypto.randomUUID(), week_id: "w", category_id: v.categoryId, voter_user_id: ME, nominee_person_id: v.personId, rockets: v.rockets, reason: v.reason, is_self: v.personId === "p0" },
-              ])
-            }
-            onClear={async (cid) => setVotes((cur) => cur.filter((x) => !(x.voter_user_id === ME && x.category_id === cid)))}
+            onVote={() => setTab("Recognitions")}
           />
         </>
       )}
 
       {tab === "Recognitions" && (
         <RecognitionSurvey
-          people={PEOPLE} myUserId={ME} radarIds={radarIds} alreadyDone={surveyDone} onFinish={() => setTab("Nave")}
+          key={questions.map((q) => q.id).join(",")}
+          people={PEOPLE} myUserId={ME} questions={questions} radarIds={radarIds} alreadyDone={surveyDone} onFinish={() => setTab("Nave")}
           initialPersonId={recognizeTarget}
-          onSubmit={async ({ answers, extra, anonymous }) =>
+          onSubmit={async ({ answers, extras, anonymous }) =>
             setRecs((cur) => [
               ...cur,
               ...answers.map((a) => ({
                 id: crypto.randomUUID(), recognized_person_id: a.personId, author_user_id: ME, is_anonymous: anonymous,
-                message: a.comment || questionOf(a.questionId)!.statement, pillar: questionOf(a.questionId)!.pillar, question_id: a.questionId, rating: a.rating,
+                message: a.comment || questions.find((q) => q.id === a.questionId)!.statement, pillar: questions.find((q) => q.id === a.questionId)!.pillar, question_id: a.questionId, rating: a.rating,
               })),
-              ...(extra ? [{ id: crypto.randomUUID(), recognized_person_id: extra.personId, author_user_id: ME, is_anonymous: anonymous, message: extra.message, pillar: extra.pillar, question_id: null, rating: null }] : []),
+              ...extras.map((x) => ({ id: crypto.randomUUID(), recognized_person_id: x.personId, author_user_id: ME, is_anonymous: anonymous, message: x.message, pillar: x.pillar, question_id: null, rating: null })),
             ])
           }
         />
@@ -307,7 +283,7 @@ const Demo = () => {
 
       {tab === "Autoevaluación" && (
         <SelfCheckinPanel
-          milestones={milestones} peopleById={peopleById} myPersonId="p0" initial={checkin}
+          milestones={milestones} peopleById={peopleById} myPersonId="p0" initial={checkin} questions={questions}
           onSave={async (c) => setCheckin({ ...c, week_id: "w", user_id: ME, person_id: "p0" })}
           onGoMilestones={() => setTab("Hitos")}
         />

@@ -3,7 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentWeek } from "@/hooks/useCurrentWeek";
-import { useMyCheckin, useMyPerson, usePeople, useWeekMilestones } from "@/hooks/useGame";
+import { useMyCheckin, useMyPerson, usePeople, useWeekAwards, useWeekMilestones } from "@/hooks/useGame";
+import { questionsFromCategories } from "@/lib/gamification";
 import { useToast } from "@/hooks/use-toast";
 import GameShell from "@/components/game/GameShell";
 import SelfCheckinPanel, { CheckinInput } from "@/components/game/SelfCheckinPanel";
@@ -14,6 +15,7 @@ const Checkin = () => {
   const { data: people = [] } = usePeople();
   const { data: me } = useMyPerson();
   const { data: milestones = [] } = useWeekMilestones(week?.id);
+  const { data: categories = [] } = useWeekAwards(week?.id);
   const { data: mine } = useMyCheckin(week?.id);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -45,6 +47,7 @@ const Checkin = () => {
         </p>
       </div>
       <SelfCheckinPanel
+        questions={questionsFromCategories(categories)}
         milestones={milestones}
         peopleById={Object.fromEntries(people.map((p) => [p.id, p]))}
         myPersonId={me?.id}

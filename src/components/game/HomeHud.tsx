@@ -168,7 +168,7 @@ const HomeHud = (p: HomeHudProps) => {
         </Section>
 
       {/* Awards in play */}
-      <Section title="Premios en juego esta semana" action={`Votar (${p.myAwardVotes}/${p.categories.length})`} onAction={() => navigate("/awards")} i={3} className="lg:col-span-2">
+      <Section title="Premios en juego esta semana" action="Votar en Recognitions" onAction={() => navigate("/recognize")} i={3} className="lg:col-span-2">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {p.categories.map((c) => (
             <button

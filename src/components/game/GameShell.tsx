@@ -1,6 +1,7 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Award, Flag, Gauge, Home, LogOut, Medal, Rocket, Shield, Trophy } from "lucide-react";
+import { Award, CircleHelp, Flag, Gauge, Home, LogOut, Medal, Rocket, Shield, Trophy } from "lucide-react";
+import OnboardingTour, { tourSeen } from "./OnboardingTour";
 import StarField from "@/components/StarField";
 import VoteReminderBanner from "@/components/VoteReminderBanner";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,6 +54,12 @@ const GameShell = ({ children, player, hideReminder }: GameShellProps) => {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const [tourOpen, setTourOpen] = useState(false);
+
+  // First visit: open the walkthrough once (it can be reopened with "?")
+  useEffect(() => {
+    if ((user || player) && !tourSeen()) setTourOpen(true);
+  }, [user, player]);
 
   // Each screen opens at the top (the router keeps the previous scroll otherwise)
   useEffect(() => {
@@ -99,6 +106,14 @@ const GameShell = ({ children, player, hideReminder }: GameShellProps) => {
             </nav>
 
             <div className="flex items-center gap-2 ml-auto lg:ml-0">
+              <button
+                onClick={() => setTourOpen(true)}
+                className="h-9 w-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50"
+                aria-label="Cómo funciona"
+                title="Cómo funciona"
+              >
+                <CircleHelp className="h-4 w-4" />
+              </button>
               {isAdmin && (
                 <button
                   onClick={() => navigate("/admin")}
@@ -146,6 +161,7 @@ const GameShell = ({ children, player, hideReminder }: GameShellProps) => {
           ))}
         </div>
       </nav>
+      <OnboardingTour open={tourOpen} onOpenChange={setTourOpen} />
     </div>
   );
 };

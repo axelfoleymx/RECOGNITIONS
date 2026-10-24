@@ -4,6 +4,8 @@ import PlayerAvatar from "@/components/game/PlayerAvatar";
 import Confetti from "./Confetti";
 import { AwardCategory, AwardStanding, GamePerson, pillarOf } from "@/lib/gamification";
 
+const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
 export type AwardResult = { category: AwardCategory; standings: AwardStanding[] };
 
 interface AwardsPhaseProps {
@@ -80,7 +82,7 @@ const AwardsPhase = ({ results, index, peopleById }: AwardsPhaseProps) => {
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6 + i * 0.3 }} className="text-center mt-3">
                   <p className="font-display text-2xl md:text-3xl text-foreground">{person?.name}</p>
                   <p className="font-hud text-primary mt-1">
-                    {w.rockets} 🚀 · {w.votes} voto{w.votes !== 1 && "s"}
+                    {fmt(w.rockets)} 🚀 · {w.votes} voto{w.votes !== 1 && "s"}
                   </p>
                   {w.reasons[0] && <p className="italic text-sm text-foreground/80 mt-2 max-w-sm">“{w.reasons[0]}”</p>}
                 </motion.div>
@@ -92,14 +94,14 @@ const AwardsPhase = ({ results, index, peopleById }: AwardsPhaseProps) => {
 
       <AnimatePresence>
         {runnersUp.length > 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2 }} className="flex gap-4 mt-8">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2 }} className="flex flex-wrap justify-center gap-3 mt-8 px-4">
             {runnersUp.map((s) => {
               const person = peopleById[s.personId];
               return (
                 <div key={s.personId} className="glass-card px-3 py-2 flex items-center gap-2">
                   <PlayerAvatar name={person?.name || "?"} photoUrl={person?.photo_url} size={30} ring="none" />
                   <span className="text-sm">{person?.name.split(" ")[0]}</span>
-                  <span className="font-hud text-xs text-muted-foreground">{s.rockets}🚀</span>
+                  <span className="font-hud text-xs text-muted-foreground">{fmt(s.rockets)}🚀</span>
                 </div>
               );
             })}

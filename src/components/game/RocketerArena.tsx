@@ -39,7 +39,7 @@ const RocketerArena = ({ people, myUserId, cooldownIds, existing, locked, onVote
     if (zone !== ZONE || existing || locked) return;
     const p = byId[pid];
     if (p && myUserId && p.user_id === myUserId) return flash("No puedes votarte a ti mismo/a 😉");
-    if (cooldownIds.has(pid)) return flash("❄️ En cooldown: fue Rocketer hace poco. ¡Dale chance a alguien más!");
+    if (cooldownIds.has(pid)) return flash("❄️ Ganó el Rocketer la semana pasada; esta semana descansa. Puedes darle una medalla en Recognitions.");
     setPersonId(pid);
   };
 
@@ -93,7 +93,7 @@ const RocketerArena = ({ people, myUserId, cooldownIds, existing, locked, onVote
             {shown ? shown.name : "Rocketer de la Semana"}
           </h2>
           <p className="text-xs text-muted-foreground text-center mt-1 max-w-sm">
-            El MVP de la semana: quien más impulsó al equipo y al cliente. Quien ganó en las últimas 3 semanas está en ❄️ cooldown.
+            El MVP de la semana: quien más impulsó al equipo y al cliente. Quien ganó la semana pasada descansa ❄️ esta semana.
           </p>
           {personId && !existing && (
             <button
@@ -181,7 +181,7 @@ const RocketerArena = ({ people, myUserId, cooldownIds, existing, locked, onVote
           onDrop={drop}
           stateFor={(p) => {
             if (myUserId && p.user_id === myUserId) return { disabled: true, badge: "Tú" };
-            if (cooldownIds.has(p.id)) return { disabled: true, badge: "❄️", hint: "En cooldown (Rocketer reciente)" };
+            if (cooldownIds.has(p.id)) return { disabled: true, badge: "❄️", hint: "Ganó la semana pasada (descansa esta semana)" };
             return undefined;
           }}
         />

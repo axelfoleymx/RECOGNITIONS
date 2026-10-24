@@ -62,11 +62,13 @@ const Index = () => {
     [user?.id, people, recognitions, awardVotes, milestones, categories.length, rocketerVotes, me?.id, myCheckin],
   );
 
+  // Votes per award: survey answers (one question per award) + legacy award votes
   const voteTotals = useMemo(() => {
     const t: Record<string, number> = {};
+    recognitions.forEach((r) => r.question_id && (t[r.question_id] = (t[r.question_id] || 0) + 1));
     awardVotes.forEach((v) => (t[v.category_id] = (t[v.category_id] || 0) + 1));
     return t;
-  }, [awardVotes]);
+  }, [recognitions, awardVotes]);
 
   const weekLabel = week
     ? `${format(parseISO(week.start_date), "d MMM", { locale: es })} – ${format(parseISO(week.end_date), "d MMM yyyy", { locale: es })}`

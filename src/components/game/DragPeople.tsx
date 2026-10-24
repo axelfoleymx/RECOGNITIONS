@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { firstName, GamePerson } from "@/lib/gamification";
+import { firstName, GamePerson, shortNames } from "@/lib/gamification";
 import PlayerAvatar from "./PlayerAvatar";
 
 // Drop zones are plain elements marked with data-dropzone="<id>".
@@ -23,10 +23,18 @@ export const zoneAt = (x: number, y: number): string | null => {
   return null;
 };
 
-export type TokenState = { disabled?: boolean; badge?: string; hint?: string; highlight?: boolean; done?: boolean };
+export type TokenState = {
+  disabled?: boolean;
+  badge?: string;
+  hint?: string;
+  highlight?: boolean;
+  done?: boolean;
+};
 
 interface DraggablePersonProps {
   person: GamePerson;
+  /** display name (defaults to the first name) */
+  label?: string;
   size?: number;
   selected?: boolean;
   state?: TokenState;
@@ -35,12 +43,24 @@ interface DraggablePersonProps {
   onSelect: (personId: string) => void;
 }
 
-export const DraggablePerson = ({ person, size = 60, selected, state, onHover, onDrop, onSelect }: DraggablePersonProps) => {
+export const DraggablePerson = ({
+  person,
+  label,
+  size = 60,
+  selected,
+  state,
+  onHover,
+  onDrop,
+  onSelect,
+}: DraggablePersonProps) => {
   const disabled = !!state?.disabled;
   // framer can emit a tap at the end of a drag; ignore it
   const dragged = useRef(false);
   return (
-    <div className="flex flex-col items-center gap-1 w-[76px]" title={state?.hint}>
+    <div
+      className="flex flex-col items-center gap-1 w-[76px]"
+      title={state?.hint}
+    >
       <motion.button
         type="button"
         drag={!disabled}
@@ -69,7 +89,8 @@ export const DraggablePerson = ({ person, size = 60, selected, state, onHover, o
           "relative rounded-full touch-none outline-none",
           state?.highlight && !selected && "radar-pulse",
           disabled ? "opacity-35 grayscale cursor-not-allowed" : "cursor-grab",
-          selected && "ring-4 ring-primary ring-offset-2 ring-offset-background",
+          selected &&
+            "ring-4 ring-primary ring-offset-2 ring-offset-background",
         )}
         style={{ zIndex: 1 }}
         aria-label={`Arrastra a ${person.name}`}
@@ -79,8 +100,16 @@ export const DraggablePerson = ({ person, size = 60, selected, state, onHover, o
           name={person.name}
           photoUrl={person.photo_url}
           size={size}
-          ring={selected || state?.done ? "gold" : state?.highlight ? "cyan" : "none"}
-          className={cn(!state?.highlight && !selected && !state?.done && "opacity-80")}
+          ring={
+            selected || state?.done
+              ? "gold"
+              : state?.highlight
+                ? "cyan"
+                : "none"
+          }
+          className={cn(
+            !state?.highlight && !selected && !state?.done && "opacity-80",
+          )}
         />
         {state?.badge && (
           <span className="absolute -top-1 -right-2 chip bg-background/90 border border-border px-1.5 py-0.5 text-[10px] text-foreground">
@@ -91,13 +120,17 @@ export const DraggablePerson = ({ person, size = 60, selected, state, onHover, o
       <span
         className={cn(
           "text-[11px] leading-tight text-center line-clamp-1 w-full",
-          state?.highlight ? "text-accent font-semibold" : "text-muted-foreground",
+          state?.highlight
+            ? "text-accent font-semibold"
+            : "text-muted-foreground",
         )}
       >
-        {firstName(person.name)}
+        {label ?? firstName(person.name)}
       </span>
       {state?.highlight && (
-        <span className="font-hud text-[9px] font-bold tracking-wider rounded bg-accent/20 text-accent px-1.5 leading-4">SIN RECOG.</span>
+        <span className="font-hud text-[9px] font-semibold rounded bg-accent/20 text-accent px-1.5 leading-4">
+          Aún sin recog.
+        </span>
       )}
     </div>
   );
@@ -114,29 +147,44 @@ interface PeopleTrayProps {
   className?: string;
 }
 
-export const PeopleTray = ({ people, selectedId, stateFor, onHover, onDrop, onSelect, title, className }: PeopleTrayProps) => (
-  <div className={cn("glass-card relative z-30 p-4", className)}>
-    <div className="flex items-center justify-between mb-3 gap-2">
-      <span className="hud-label">{title ?? "Tripulación"}</span>
-      <span className="text-xs text-muted-foreground">
-        {selectedId ? "Ahora toca un trofeo 🏆" : "Arrastra una foto al trofeo · o tócala"}
-      </span>
+export const PeopleTray = ({
+  people,
+  selectedId,
+  stateFor,
+  onHover,
+  onDrop,
+  onSelect,
+  title,
+  className,
+}: PeopleTrayProps) => {
+  const labels = shortNames(people);
+  return (
+    <div className={cn("glass-card relative z-30 p-4", className)}>
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <span className="hud-label">{title ?? "Tripulación"}</span>
+        <span className="text-xs text-muted-foreground">
+          {selectedId
+            ? "Ahora toca un trofeo 🏆"
+            : "Arrastra una foto al trofeo · o tócala"}
+        </span>
+      </div>
+      <div className="flex flex-wrap justify-center gap-x-2 gap-y-3">
+        {people.map((p) => (
+          <DraggablePerson
+            key={p.id}
+            person={p}
+            label={labels[p.id]}
+            selected={selectedId === p.id}
+            state={stateFor?.(p)}
+            onHover={onHover}
+            onDrop={(pid, z) => {
+              onSelect(null);
+              onDrop(pid, z);
+            }}
+            onSelect={(pid) => onSelect(selectedId === pid ? null : pid)}
+          />
+        ))}
+      </div>
     </div>
-    <div className="flex flex-wrap justify-center gap-x-2 gap-y-3">
-      {people.map((p) => (
-        <DraggablePerson
-          key={p.id}
-          person={p}
-          selected={selectedId === p.id}
-          state={stateFor?.(p)}
-          onHover={onHover}
-          onDrop={(pid, z) => {
-            onSelect(null);
-            onDrop(pid, z);
-          }}
-          onSelect={(pid) => onSelect(selectedId === pid ? null : pid)}
-        />
-      ))}
-    </div>
-  </div>
-);
+  );
+};
